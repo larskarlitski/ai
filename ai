@@ -1,0 +1,192 @@
+#!/usr/bin/env node
+
+import child_process from "node:child_process";
+import fs from "node:fs/promises";
+import path from "node:path";
+import process from "node:process";
+import util from "node:util";
+import * as streamconsumers from "node:stream/consumers";
+
+async function spawnAndCapture(cmd, args, options = {}) {
+  let { promise, resolve, reject  } = Promise.withResolvers();
+  let stdout = [];
+  let stderr = [];
+
+  let child = child_process.spawn(cmd, args, {
+    stdio: ["inherit", "pipe", "pipe"]
+  });
+
+  child.stdout.on("data", chunk => {
+    if (options.print)
+      process.stdout.write(chunk);
+    stdout.push(chunk);
+  });
+
+  child.stderr.on("data", chunk => {
+    if (options.print)
+      process.stderr.write(chunk);
+    stderr.push(chunk);
+  });
+
+  child.on("error", reject);
+
+  child.on("exit", code => {
+    resolve({
+      code,
+      stdout: stdout.join(""),
+      stderr: stderr.join("")
+    });
+  });
+
+  return promise;
+}
+
+async function execute(args) {
+  let cwd = process.cwd();
+  let name = path.basename(cwd);
+
+  return await spawnAndCapture("bwrap", [
+    "--unshare-all",
+    "--ro-bind", "/usr", "/usr",
+    "--ro-bind", "/lib", "/lib",
+    "--ro-bind", "/bin", "/bin",
+    "--bind", cwd, `/${name}`,
+    "--chdir", `/${name}`,
+    ...args
+  ]);
+}
+
+async function handleOutput(output) {
+  switch (output.type) {
+    case "message":
+      for (let item of output.content ?? []) {
+        if (item.type === "output_text")
+          console.log(item.text);
+        else if (item.type === "refusal")
+          console.log(`[REFUSED] ${item.refusal}`);
+      }
+      return [];
+
+    case "reasoning":
+      // it's usually empty
+      for (let summary of output.summary)
+        console.log(`[REASONING] ${summary}`);
+      return [];
+
+    case "function_call": {
+      if (output.name !== "execute")
+        throw new Error(`Unkown tool: ${output.name}`);
+
+      let args = JSON.parse(output.arguments);
+      console.log("[EXECUTE]", args.args.map(
+        a => /^[A-Za-z0-9._/-]+$/.test(a) ? a : JSON.stringify(a)
+      ).join(" "));
+
+      let r = await execute(args.args);
+      if (r.code !== 0)
+        console.log(`\nCommand returned ${r.code}`);
+
+      return [
+        {
+          type: "function_call_output",
+          call_id: output.call_id,
+          output: JSON.stringify(r)
+        }
+      ];
+    }
+
+    default:
+      throw new Error(`Unknown output type: ${output.type}`);
+  }
+}
+
+async function call(input, previousResponseId = null) {
+  let apiKey = process.env.OPENAI_API_KEY;
+  if (apiKey === undefined)
+    throw new Error("Missing OPENAI_API_KEY");
+
+  let response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "gpt-5.2-codex",
+      previous_response_id: previousResponseId,
+      tools: [
+        {
+          type: "function",
+          name: "execute",
+          description: "Executes a command",
+          parameters: {
+            type: "object",
+            properties: {
+              args: { type: "array", items: { type: "string" } }
+            }
+          }
+        }
+      ],
+      input
+    })
+  });
+
+  if (!response.ok) {
+    let text = await response.text();
+    throw new Error(`OpenAI API error ${response.status}: ${text}`);
+  }
+
+  return await response.json();
+}
+
+async function agentLoop(input) {
+  if (input.length === 0)
+    throw new Error("Empty prompt");
+
+  let tokens = 0;
+  let previousResponseId = null;
+  while (input.length !== 0) {
+    let response = await call(input, previousResponseId);
+    if (response.error)
+      throw response.error;
+    if (response.status !== "completed")
+      throw new Error(`Model returned status ${response.status}`);
+
+    input = [];
+    for (let inputs of await Promise.all(response.output.map(handleOutput)))
+      input.push(...inputs);
+
+    previousResponseId = response.id;
+    tokens += response.usage.total_tokens;
+  }
+
+  console.log(`\n${tokens} tokens`);
+}
+
+async function main() {
+  let input = [];
+
+  let { values, positionals } = util.parseArgs({
+    options: {
+      system: { type: "string" }
+    },
+    allowPositionals: true
+  });
+
+  if (values.system !== undefined)
+    input.push({ role: "system", content: values.system });
+
+  for (let content of positionals)
+    input.push(({ role: "user", content }));
+
+  if (!process.stdin.isTTY)
+    input.push({ role: "user", content: await streamconsumers.text(process.stdin) });
+
+  await agentLoop(input);
+}
+
+try {
+  await main(process.argv.slice(2));
+} catch (error) {
+  console.error(error.stack);
+}
