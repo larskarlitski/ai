@@ -1,0 +1,112 @@
+AI - Agent Infrastructure
+=========================
+
+A minimal runtime for non-interactive agents.
+
+    ai [--help] AGENT [PROMPT...]
+
+AGENT is a directory containing configuration, instructions, and tools.
+
+PROMPT... is used as prompt text. If stdin is not a terminal, it is appended to
+the prompt.
+
+Writes a JSONL transcript to stdout.
+
+
+Agents
+------
+
+An agent is a directory containing:
+
+config.json:
+
+  {
+     "model": <name>
+     "api": "anthropic-messages" or "anthropic-vertex" or
+            "google-generate-content" or "openai-responses",
+     "baseURL": <base URL of the API>,
+     "credentialName": <name of environment variable containing API key>
+  }
+
+  If "api", "baseURL", or "credentialName" are not given, they are inferred
+  from "model".
+
+instructions.md
+
+  High priority instructions for the agent.
+
+tools/
+
+  A directory of executables that are exposed to the model as tools
+  (non-executable files and directories are ignored). Each of them must output
+  its schema when invoked with "--tool":
+
+    {
+      "name": <name>,
+      "description": <description>,
+      "arguments": [ { "name": <name>, "description": <description> } ] or
+                   { "name": <name>, "description": <description> }
+    }
+
+  The array form of "arguments" exposes each argument as a named string and
+  passes them as positional command line arguments to the tool. The object form
+  exposes a single array of strings.
+
+  Tools stdout is returned verbatim to the model and stderr is only visible in
+  the transcript. If a tool fails, the whole agent run is aborted.
+
+  Tools run as trusted programs in the directory where "ai" was started and
+  inherit its environment. Each tool is responsible for its own containment
+  policy.
+
+
+Transcripts
+-----------
+
+During operation, ai outputs JSONL events:
+
+  {
+    "type": "start",
+    "timestamp": <ISO 8601 timestamp>,
+    "payload": {
+      "agent": {
+        "model": <model configuration from config.json>,
+        "instructions": <contents of instructions.md>,
+        "tools": { <name>: <schema> }
+      },
+      "prompt": [ <user messages> ]
+    }
+  }
+
+  {
+    "type": "model",
+    "timestamp": <ISO 8601 timestamp>,
+    "payload": {
+      "message": <message from the model>
+    }
+  }
+
+  {
+    "type": "toolCall",
+    "timestamp": <ISO 8601 timestamp>,
+    "payload": {
+      "id": <id>,
+      "tool": <tool name>,
+      "arguments": { <argument name>: <argument value> }
+    }
+  }
+
+  {
+    "type": "toolResult",
+    "timestamp": <ISO 8601 timestamp>,
+    "payload": {
+      "id": <id>,
+      "result": <tool output>
+    }
+  }
+
+  {
+    "type": "end",
+    "timestamp": <ISO 8601 timestamp>,
+    "payload": {}
+  }

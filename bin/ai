@@ -1,0 +1,91 @@
+#!/usr/bin/env node
+
+import * as Agent from "../lib/Agent.js";
+import * as streamconsumers from "node:stream/consumers";
+import os from "node:os";
+import process from "node:process";
+
+import * as APIs from "../lib/APIs.js";
+
+let help = `ai [--help] AGENT [PROMPT...]
+
+Run an agent non-interactively until it completes.
+
+AGENT is a directory containing configuration, instructions, and tools.
+
+PROMPT... is used as prompt text. If stdin is not a terminal, it is appended to
+the prompt.
+
+Writes a JSONL transcript to stdout.
+
+Options:
+  --help      Show this help.
+`;
+
+function transcript(type, payload) {
+  console.log(JSON.stringify({
+    type,
+    timestamp: new Date().toISOString(),
+    payload
+  }));
+}
+
+async function runTools(tools, calls) {
+  let results = {};
+
+  for (let call of calls) {
+    transcript("toolCall", call);
+
+    let tool = tools[call.tool];
+    let result = (tool === undefined
+      ? `Error: Unknown tool: ${call.tool}`
+      : await Agent.runTool(tool, call.arguments)
+    );
+
+    results[call.id] = result;
+    transcript("toolResult", { result });
+  }
+
+  return results;
+}
+
+async function main(args) {
+  if (args[0] === "--help" || args[0] === "-h") {
+    console.log(help);
+    return 0;
+  }
+
+  let [ directory, ...prompt ] = args;
+
+  if (directory === undefined)
+    throw Error("Missing argument: agent");
+
+  if (!process.stdin.isTTY)
+    prompt.push(await streamconsumers.text(process.stdin));
+
+  let agent = await Agent.load(directory);
+  let session = APIs.createSession(agent.api, agent.model, agent.baseURL, agent.credentialName);
+
+  transcript("start", { agent, prompt });
+  let response = await session.start(agent.instructions, prompt, Object.values(agent.tools));
+
+  for (;;) {
+    if (response.message !== undefined)
+      transcript("model", { message: response.message });
+
+    if (response.toolCalls.length === 0)
+      break;
+
+    let results = await runTools(agent.tools, response.toolCalls);
+    response = await session.turn(results);
+  }
+
+  transcript("end");
+}
+
+try {
+  process.exitCode = await main(process.argv.slice(2));
+} catch (error) {
+  console.error(error);
+  process.exitCode = 1;
+}
