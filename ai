@@ -74,13 +74,11 @@ async function handleOutput(output) {
         throw new Error(`Unkown tool: ${output.name}`);
 
       let args = JSON.parse(output.arguments);
-      console.log("[EXECUTE]", args.args.map(
+      console.log("$", args.args.map(
         a => /^[A-Za-z0-9._/-]+$/.test(a) ? a : JSON.stringify(a)
       ).join(" "));
 
       let r = await execute(args.args);
-      if (r.code !== 0)
-        console.log(`\nCommand returned ${r.code}`);
 
       return [
         {
