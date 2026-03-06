@@ -2,7 +2,7 @@
 
 A minimal, non-interactive coding agent.
 
-    OPENAI_API_KEY=... ai [--system PROMPT] PROMPT...
+    OPENAI_API_KEY=... ai [--model MODEL] [--system PROMPT] PROMPT...
 
 Runs a single agent loop:
 - passes all prompts and optionally stdin to the model; the model receives no further input
