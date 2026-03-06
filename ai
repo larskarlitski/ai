@@ -30,7 +30,7 @@ async function spawnAndCapture(cmd, args, options = {}) {
 
   child.on("error", reject);
 
-  child.on("exit", code => {
+  child.on("close", code => {
     resolve({
       code,
       stdout: stdout.join(""),
