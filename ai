@@ -7,7 +7,7 @@ import process from "node:process";
 import util from "node:util";
 import * as streamconsumers from "node:stream/consumers";
 
-async function spawnAndCapture(cmd, args, options = {}) {
+async function spawnAndCapture(cmd, args) {
   let { promise, resolve, reject  } = Promise.withResolvers();
   let stdout = [];
   let stderr = [];
@@ -17,14 +17,10 @@ async function spawnAndCapture(cmd, args, options = {}) {
   });
 
   child.stdout.on("data", chunk => {
-    if (options.print)
-      process.stdout.write(chunk);
     stdout.push(chunk);
   });
 
   child.stderr.on("data", chunk => {
-    if (options.print)
-      process.stderr.write(chunk);
     stderr.push(chunk);
   });
 
