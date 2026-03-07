@@ -28,17 +28,20 @@ async function handleOutput(output) {
   switch (output.type) {
     case "message":
       for (let item of output.content ?? []) {
-        if (item.type === "output_text")
+        if (item.type === "output_text") {
+          console.log();
           console.log(item.text);
-        else if (item.type === "refusal")
-          console.log(`[REFUSED] ${item.refusal}`);
+          console.log();
+        } else if (item.type === "refusal") {
+          console.log(`REFUSED ${item.refusal}`);
+        }
       }
       return [];
 
     case "reasoning":
       // it's usually empty
       for (let summary of output.summary)
-        console.log(`[REASONING] ${summary}`);
+        console.log(`REASON ${summary}`);
       return [];
 
     case "function_call": {
@@ -46,9 +49,10 @@ async function handleOutput(output) {
         throw new Error(`Unkown tool: ${output.name}`);
 
       let args = JSON.parse(output.arguments);
-      console.log("$", args.args.map(
+      let cmd = args.args.map(
         a => /^[A-Za-z0-9._/-]+$/.test(a) ? a : JSON.stringify(a)
-      ).join(" "));
+      ).join(" ");
+      console.log(`EXECUTE ${cmd}`);
 
       let r;
       try {
@@ -131,7 +135,7 @@ async function agentLoop(input, model) {
     tokens += response.usage.total_tokens;
   }
 
-  console.log(`\n${tokens} tokens`);
+  console.log(`DONE ${tokens} tokens`);
 }
 
 async function main() {
