@@ -1,47 +1,19 @@
 #!/usr/bin/env node
 
+import * as streamconsumers from "node:stream/consumers";
 import child_process from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import util from "node:util";
-import * as streamconsumers from "node:stream/consumers";
 
-async function spawnAndCapture(cmd, args) {
-  let { promise, resolve, reject  } = Promise.withResolvers();
-  let stdout = [];
-  let stderr = [];
-
-  let child = child_process.spawn(cmd, args, {
-    stdio: ["inherit", "pipe", "pipe"]
-  });
-
-  child.stdout.on("data", chunk => {
-    stdout.push(chunk);
-  });
-
-  child.stderr.on("data", chunk => {
-    stderr.push(chunk);
-  });
-
-  child.on("error", reject);
-
-  child.on("close", code => {
-    resolve({
-      code,
-      stdout: stdout.join(""),
-      stderr: stderr.join("")
-    });
-  });
-
-  return promise;
-}
+let execFile = util.promisify(child_process.execFile);
 
 async function execute(args) {
   let cwd = process.cwd();
   let name = path.basename(cwd);
 
-  return await spawnAndCapture("bwrap", [
+  return await execFile("bwrap", [
     "--unshare-all",
     "--ro-bind", "/usr", "/usr",
     "--ro-bind", "/lib", "/lib",
@@ -78,7 +50,12 @@ async function handleOutput(output) {
         a => /^[A-Za-z0-9._/-]+$/.test(a) ? a : JSON.stringify(a)
       ).join(" "));
 
-      let r = await execute(args.args);
+      let r;
+      try {
+        r = await execute(args.args);
+      } catch (error) {
+        r = error;
+      }
 
       return [
         {
