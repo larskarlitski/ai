@@ -15,6 +15,8 @@ async function execute(args) {
 
   return await execFile("bwrap", [
     "--unshare-all",
+    "--dev", "/dev",
+    "--proc", "/proc",
     "--ro-bind", "/usr", "/usr",
     "--ro-bind", "/lib", "/lib",
     "--ro-bind", "/bin", "/bin",
