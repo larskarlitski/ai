@@ -89,12 +89,12 @@ async function main() {
   if (!process.stdin.isTTY)
     prompt.user.push(await streamconsumers.text(process.stdin));
 
-  let r = await run(prompt, tools, message);
-  console.log(`DONE ${r.tokens} tokens`);
+  try {
+    let { tokens } = await run(prompt, tools, message);
+    console.log(`DONE ${tokens} tokens`);
+  } catch (error) {
+    console.error(options.verbose ? error.stack : error);
+  }
 }
 
-try {
-  await main(process.argv.slice(2));
-} catch (error) {
-  console.error(options.verbose ? error.stack : error);
-}
+await main();
