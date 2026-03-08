@@ -9,6 +9,7 @@ import Gemini from "./library/Gemini.js";
 import OpenAI from "./library/OpenAI.js";
 
 import * as Execute from "./library/Execute.js";
+import * as Patch from "./library/Patch.js";
 
 let providers = [
   {
@@ -28,7 +29,7 @@ let providers = [
   }
 ];
 
-let tools = { execute: Execute };
+let tools = { execute: Execute, patch: Patch };
 
 async function callTool(name, args) {
   let tool = tools[name];
