@@ -2,8 +2,6 @@ import child_process from "node:child_process";
 import path from "node:path";
 import util from "node:util";
 
-let execFile = util.promisify(child_process.execFile);
-
 export const schema = Object.freeze({
   name: "execute",
   description: "Executes a command",
@@ -15,11 +13,11 @@ export const schema = Object.freeze({
   }
 });
 
-export async function call({ args }) {
+export function call({ args }) {
+  let { promise, resolve, reject } = Promise.withResolvers();
   let cwd = process.cwd();
   let name = path.basename(cwd);
-
-  return await execFile("bwrap", [
+  let cmd = [
     "--unshare-all",
     "--dev", "/dev",
     "--proc", "/proc",
@@ -29,7 +27,18 @@ export async function call({ args }) {
     "--bind", cwd, `/${name}`,
     "--chdir", `/${name}`,
     ...args
-  ]);
+  ];
+
+  let child = child_process.execFile("bwrap", cmd, (error, stdout, stderr) => {
+    if (error)
+      reject(error);
+    else
+      resolve({ stdout, stderr });
+  });
+
+  child.stdin.end();
+
+  return promise;
 }
 
 export function argsToString({ args }) {
