@@ -3,6 +3,7 @@
 import * as streamconsumers from "node:stream/consumers";
 import process from "node:process";
 import util from "node:util";
+import Gemini from "./library/Gemini.js";
 import OpenAI from "./library/OpenAI.js";
 import * as Execute from "./library/Execute.js";
 
@@ -37,7 +38,17 @@ function modelRunner(model) {
     return OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
       model,
-      tools: Object.entries(tools).map(([ name, tool ]) => ({ type: "function", ...tool.schema })),
+      tools: Object.values(tools).map(t => t.schema),
+      callTool,
+      message
+    });
+  }
+
+  if (model.startsWith("gemini-")) {
+    return Gemini({
+      apiKey: process.env.GEMINI_API_KEY,
+      model,
+      tools: Object.values(tools).map(t => t.schema),
       callTool,
       message
     });
@@ -47,8 +58,6 @@ function modelRunner(model) {
 }
 
 async function main() {
-  let prompt = {};
-
   let { values, positionals } = util.parseArgs({
     options: {
       model: { type: "string", default: "gpt-5.2-codex" },
@@ -58,12 +67,12 @@ async function main() {
   });
 
   let run = modelRunner(values.model);
+  let prompt = {};
 
   if (values.system !== undefined)
     prompt.system = values.system;
 
-  if (positionals.length > 0)
-    prompt.user = positionals;
+  prompt.user = positionals;
 
   if (!process.stdin.isTTY)
     prompt.user.push(await streamconsumers.text(process.stdin));

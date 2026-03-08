@@ -2,6 +2,10 @@ async function call(previousResponseId, input, options) {
   if (options.apiKey === undefined)
     throw new Error("Missing OPENAI_API_KEY");
 
+  let tools = [];
+  for (let tool of options.tools)
+    tools.push({ type: "function", ...tool });
+
   let response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -11,7 +15,7 @@ async function call(previousResponseId, input, options) {
     body: JSON.stringify({
       model: options.model,
       previous_response_id: previousResponseId,
-      tools: options.tools,
+      tools,
       input
     })
   });
@@ -32,15 +36,11 @@ async function call(previousResponseId, input, options) {
 
 async function run(prompt, options) {
   let input = [];
-  for (let [ role, content ] of Object.entries(prompt)) {
-    if (typeof content === "string")
-      input.push({ role, content });
-    else
-      input.push(...content.map(c => ({ role, content: c })));
-  }
+  for (let [ role, content ] of Object.entries(prompt))
+    input.push(...content.map(c => ({ role, content: c })));
 
   if (input.length === 0)
-    throw new TypeError("Invalid argument: input is empty");
+    throw new TypeError("Invalid argument: prompt is empty");
 
   let messages = [];
   let tokens = 0;
