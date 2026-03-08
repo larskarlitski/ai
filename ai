@@ -3,9 +3,30 @@
 import * as streamconsumers from "node:stream/consumers";
 import process from "node:process";
 import util from "node:util";
+
+import Anthropic from "./library/Anthropic.js";
 import Gemini from "./library/Gemini.js";
 import OpenAI from "./library/OpenAI.js";
+
 import * as Execute from "./library/Execute.js";
+
+let providers = [
+  {
+    runner: OpenAI,
+    prefix: "gpt-",
+    apiKey: process.env.OPENAI_API_KEY
+  },
+  {
+    runner: Gemini,
+    prefix: "gemini-",
+    apiKey: process.env.GEMINI_API_KEY
+  },
+  {
+    runner: Anthropic,
+    prefix: "claude-",
+    apiKey: process.env.ANTHROPIC_API_KEY
+  }
+];
 
 let tools = { execute: Execute };
 
@@ -34,43 +55,34 @@ function message(message, options = {}) {
 }
 
 function modelRunner(model) {
-  if (model.startsWith("gpt-")) {
-    return OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+  let provider = providers.find(p => model.startsWith(p.prefix));
+  if (provider === undefined)
+    throw new Error(`Unknown model name: ${model}`);
+
+  return provider.runner({
+      apiKey: provider.apiKey,
       model,
       tools: Object.values(tools).map(t => t.schema),
       callTool,
       message
-    });
-  }
-
-  if (model.startsWith("gemini-")) {
-    return Gemini({
-      apiKey: process.env.GEMINI_API_KEY,
-      model,
-      tools: Object.values(tools).map(t => t.schema),
-      callTool,
-      message
-    });
-  }
-
-  throw new Error(`Unknown model name: ${model}`);
+  });
 }
 
 async function main() {
-  let { values, positionals } = util.parseArgs({
+  let { values: options, positionals } = util.parseArgs({
     options: {
       model: { type: "string", default: "gpt-5.2-codex" },
-      system: { type: "string", multiple: true }
+      system: { type: "string", multiple: true },
+      verbose: { type: "boolean" }
     },
     allowPositionals: true
   });
 
-  let run = modelRunner(values.model);
+  let run = modelRunner(options.model);
   let prompt = {};
 
-  if (values.system !== undefined)
-    prompt.system = values.system;
+  if (options.system !== undefined)
+    prompt.system = options.system;
 
   prompt.user = positionals;
 
@@ -84,5 +96,5 @@ async function main() {
 try {
   await main(process.argv.slice(2));
 } catch (error) {
-  console.error(error.stack);
+  console.error(options.verbose ? error.stack : error);
 }
