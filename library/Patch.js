@@ -1,4 +1,4 @@
-import bwrap from "./Bubblewrap.js";
+import * as Sandbox from "./Sandbox.js";
 
 export const schema = Object.freeze({
   name: "patch",
@@ -29,7 +29,7 @@ export function validateArgs(args) {
 }
 
 export function call({ patch }) {
-  return bwrap([
+  return Sandbox.execute([
     "patch",
     "--strip=1",       // strip leading a/ b/ path components
     "--unified",       // expect unified diff format

@@ -1,4 +1,4 @@
-import bwrap from "./Bubblewrap.js";
+import * as Sandbox from "./Sandbox.js";
 
 export const schema = Object.freeze({
   name: "execute",
@@ -24,7 +24,7 @@ export function validateArgs(args) {
 }
 
 export function call({ args, stdin }) {
-  return bwrap(args, { stdin });
+  return Sandbox.execute(args, { stdin });
 }
 
 export function argsToString({ args, stdin }) {

@@ -10,5 +10,5 @@ to be set.
 
 Runs a single agent loop:
 - passes all prompts and optionally stdin to the model; the model receives no further input
-- gives the model sandboxed (via bubblewrap) access to the current directory and allows it run any
-  executable in /usr
+- gives the model sandboxed (via bubblewrap on Linux and sandbox-exec on macOS) access to the
+  current directory and allows it run any executable in /usr
