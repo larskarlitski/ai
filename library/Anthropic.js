@@ -11,7 +11,8 @@ async function call(input, options) {
     });
   }
 
-  let response = await fetch("https://api.anthropic.com/v1/messages", {
+  let url = new URL("v1/messages", options.baseURL);
+  let response = await fetch(url, {
     method: "POST",
     headers: {
       "x-api-key": options.apiKey,

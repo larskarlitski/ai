@@ -16,16 +16,19 @@ let providers = [
   {
     runner: OpenAI,
     prefix: "gpt-",
+    baseURL: "https://api.openai.com/",
     apiKey: process.env.OPENAI_API_KEY
   },
   {
     runner: Gemini,
     prefix: "gemini-",
+    baseURL: "https://generativelanguage.googleapis.com/",
     apiKey: process.env.GEMINI_API_KEY
   },
   {
     runner: Anthropic,
     prefix: "claude-",
+    baseURL: "https://api.anthropic.com/",
     apiKey: process.env.ANTHROPIC_API_KEY
   }
 ];
@@ -64,17 +67,22 @@ function message(message, options = {}) {
   }
 }
 
-function modelRunner(model) {
+function modelRunner(model, baseURL) {
   let provider = providers.find(p => model.startsWith(p.prefix));
   if (provider === undefined)
     throw new Error(`Unknown model name: ${model}`);
 
+  baseURL = new URL(baseURL ?? provider.baseURL);
+  if (!baseURL.pathname.endsWith("/"))
+    baseURL.pathname += "/";
+
   return provider.runner({
-      apiKey: provider.apiKey,
-      model,
-      tools: Object.values(tools).map(t => t.schema),
-      callTool,
-      message
+    apiKey: provider.apiKey,
+    model,
+    tools: Object.values(tools).map(t => t.schema),
+    callTool,
+    message,
+    baseURL
   });
 }
 
@@ -89,12 +97,13 @@ async function main() {
       model: { type: "string", default: "gpt-5.2-codex" },
       system: { type: "string", multiple: true },
       file: { type: "string", multiple: true },
-      "system-file": { type: "string", multiple: true }
+      "system-file": { type: "string", multiple: true },
+      "base-url": { type: "string" }
     },
     allowPositionals: true
   });
 
-  let run = modelRunner(options.model);
+  let run = modelRunner(options.model, options["base-url"]);
   let prompt = {
     system: [],
     user: positionals

@@ -6,7 +6,8 @@ async function call(previousResponseId, input, options) {
   for (let tool of options.tools)
     tools.push({ type: "function", ...tool });
 
-  let response = await fetch("https://api.openai.com/v1/responses", {
+  let url = new URL("v1/responses", options.baseURL);
+  let response = await fetch(url, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${options.apiKey}`,

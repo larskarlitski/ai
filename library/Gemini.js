@@ -2,10 +2,7 @@ async function call(input, options) {
   if (options.apiKey === undefined)
     throw new Error("Missing GEMINI_API_KEY");
 
-  let url = new URL(
-    `/v1beta/models/${options.model}:generateContent`,
-    "https://generativelanguage.googleapis.com"
-  );
+  let url = new URL(`v1beta/models/${options.model}:generateContent`, options.baseURL);
   url.searchParams.set("key", options.apiKey);
 
   let response = await fetch(url, {
