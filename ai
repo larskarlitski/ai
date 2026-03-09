@@ -42,7 +42,7 @@ async function callTool(name, args) {
       throw new Error(`Tool not found: ${name}`);
 
     if (!tool.validateArgs(args)) {
-      console.log(`${name.toUpperCase()} [invalid arguments]`);
+      console.log(`${name.toUpperCase()} [invalid arguments] ${args}`);
       throw new TypeError(`Invalid arguments: expected ${JSON.stringify(tool.schema)}`);
     }
 
