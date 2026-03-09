@@ -46,6 +46,7 @@ function sandboxExec(argv) {
 (allow sysctl-read)
 (allow mach-lookup)
 (allow file-read*
+  (literal "/")
   (subpath "/usr")
   (subpath "/bin")
   (subpath "/dev")
