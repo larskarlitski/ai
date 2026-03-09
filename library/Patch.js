@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import bwrap from "./Bubblewrap.js";
 
 export const schema = Object.freeze({
@@ -29,24 +28,14 @@ export function validateArgs(args) {
   );
 }
 
-export async function call({ patch }) {
-  let cwd = process.cwd();
-  let tmpName = `.patch-${process.pid}-${Date.now()}.tmp`;
-  let tmpPath = `${cwd}/${tmpName}`;
-  await fs.writeFile(tmpPath, patch);
-
-  try {
-    return await bwrap([
-      "patch",
-      "--strip=1",       // strip leading a/ b/ path components
-      "--unified",       // expect unified diff format
-      "--fuzz=2",        // allow some fuzz for imprecise context lines
-      "--batch",         // non-interactive: never prompt
-      "--input", tmpName
-    ]);
-  } finally {
-    await fs.unlink(tmpPath);
-  };
+export function call({ patch }) {
+  return bwrap([
+    "patch",
+    "--strip=1",       // strip leading a/ b/ path components
+    "--unified",       // expect unified diff format
+    "--fuzz=2",        // allow some fuzz for imprecise context lines
+    "--batch"          // non-interactive: never prompt
+  ], { stdin: patch });
 }
 
 export function argsToString({ patch }) {
