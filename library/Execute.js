@@ -11,6 +11,13 @@ export const schema = Object.freeze({
   }
 });
 
+export function validateArgs(args) {
+  return (
+    typeof args === "object" && args !== null &&
+    Array.isArray(args.args) && args.args.every(a => typeof a === "string")
+  );
+}
+
 export function call({ args }) {
   return bwrap(args);
 }

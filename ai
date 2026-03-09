@@ -32,16 +32,24 @@ let providers = [
 let tools = { execute: Execute, patch: Patch };
 
 async function callTool(name, args) {
-  let tool = tools[name];
-  if (tool === undefined)
-    throw new Error(`Tool not found: ${name}`);
-
-  console.log(`${name.toUpperCase()} ${tool.argsToString(args)}`);
-
   try {
+    let tool = tools[name];
+    if (tool === undefined)
+      throw new Error(`Tool not found: ${name}`);
+
+    if (!tool.validateArgs(args)) {
+      console.log(`${name.toUpperCase()} [invalid arguments]`);
+      throw new TypeError(`Invalid arguments: expected ${JSON.stringify(tool.schema)}`);
+    }
+
+    console.log(`${name.toUpperCase()} ${tool.argsToString(args)}`);
+
     return await tool.call(args);
   } catch (error) {
-    return { error };
+    if (typeof error.toJSON === "function")
+      return { error };
+    else
+      return { error: String(error) };
   }
 }
 

@@ -22,6 +22,13 @@ export const schema = Object.freeze({
   }
 });
 
+export function validateArgs(args) {
+  return (
+    typeof args === "object" && args !== null &&
+    typeof args.patch === "string"
+  );
+}
+
 export async function call({ patch }) {
   let cwd = process.cwd();
   let tmpName = `.patch-${process.pid}-${Date.now()}.tmp`;
