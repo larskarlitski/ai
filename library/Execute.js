@@ -6,7 +6,11 @@ export const schema = Object.freeze({
   parameters: {
     type: "object",
     properties: {
-      args: { type: "array", items: { type: "string" } }
+      args: { type: "array", items: { type: "string" } },
+      stdin: {
+        type: "string",
+        description: "Optional string to pass as standard input to the command"
+      }
     }
   }
 });
@@ -14,16 +18,20 @@ export const schema = Object.freeze({
 export function validateArgs(args) {
   return (
     typeof args === "object" && args !== null &&
-    Array.isArray(args.args) && args.args.every(a => typeof a === "string")
+    Array.isArray(args.args) && args.args.every(a => typeof a === "string") &&
+    (args.stdin === undefined || typeof args.stdin === "string")
   );
 }
 
-export function call({ args }) {
-  return bwrap(args);
+export function call({ args, stdin }) {
+  return bwrap(args, { stdin });
 }
 
-export function argsToString({ args }) {
-  return args.map(
+export function argsToString({ args, stdin }) {
+  let cmd = args.map(
     a => /^[A-Za-z0-9._/-]+$/.test(a) ? a : JSON.stringify(a)
   ).join(" ");
+  if (stdin !== undefined)
+    cmd += " (with stdin)";
+  return cmd;
 }

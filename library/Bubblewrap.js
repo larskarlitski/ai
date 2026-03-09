@@ -42,7 +42,10 @@ export default function (args, options = {}) {
       resolve({ stdout, stderr });
   });
 
-  child.stdin.end();
+  if (options.stdin !== undefined)
+    child.stdin.end(options.stdin);
+  else
+    child.stdin.end();
 
   return promise;
 }
