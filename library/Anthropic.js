@@ -28,14 +28,9 @@ async function call(input, options) {
     })
   });
 
-  if (!response.ok) {
-    let error = await response.json();
-    throw new Error(`Error (${response.status}): ${error.error.message}`);
-  }
-
   let reply = await response.json();
-  if (reply.error)
-    throw new Error(reply.error);
+  if (!response.ok || reply.error !== undefined)
+    throw new Error(`Error (${response.status}): ${reply.error.message}`);
 
   return reply;
 }
