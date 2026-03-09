@@ -42,7 +42,7 @@ async function call(input, options) {
 
 async function run(prompt, options) {
   let input = {};
-  if (prompt.system !== undefined && prompt.system.length !== 0)
+  if (prompt.system !== undefined && prompt.system.length > 0)
     input.system = prompt.system.map(text => ({ type: "text", text }));
 
   if (prompt.user !== undefined && prompt.user.length !== 0)

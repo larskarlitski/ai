@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import * as streamconsumers from "node:stream/consumers";
+import fs from "node:fs/promises";
 import process from "node:process";
 import util from "node:util";
 
@@ -77,23 +78,36 @@ function modelRunner(model) {
   });
 }
 
+function readFiles(paths) {
+  return Promise.all(paths.map(path => fs.readFile(path, "utf8")));
+}
+
 async function main() {
   let { values: options, positionals } = util.parseArgs({
     options: {
+      verbose: { type: "boolean" },
       model: { type: "string", default: "gpt-5.2-codex" },
       system: { type: "string", multiple: true },
-      verbose: { type: "boolean" }
+      file: { type: "string", multiple: true },
+      "system-file": { type: "string", multiple: true }
     },
     allowPositionals: true
   });
 
   let run = modelRunner(options.model);
-  let prompt = {};
+  let prompt = {
+    system: [],
+    user: positionals
+  };
 
   if (options.system !== undefined)
-    prompt.system = options.system;
+    prompt.system.push(options.system);
 
-  prompt.user = positionals;
+  if (options["system-file"] !== undefined)
+    prompt.system.push(...await readFiles(options["system-file"]));
+
+  if (options.file !== undefined)
+    prompt.user.push(...await readFiles(options.file));
 
   if (!process.stdin.isTTY)
     prompt.user.push(await streamconsumers.text(process.stdin));
