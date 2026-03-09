@@ -41,7 +41,7 @@ async function callTool(name, args) {
   try {
     return await tool.call(args);
   } catch (error) {
-    return { error: error.message };
+    return { error };
   }
 }
 

@@ -1,6 +1,5 @@
-import child_process from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
+import fs from "node:fs/promises";
+import bwrap from "./Bubblewrap.js";
 
 export const schema = Object.freeze({
   name: "patch",
@@ -23,48 +22,24 @@ export const schema = Object.freeze({
   }
 });
 
-export function call({ patch }) {
-  let { promise, resolve, reject } = Promise.withResolvers();
+export async function call({ patch }) {
   let cwd = process.cwd();
-  let name = path.basename(cwd);
-
-  // Write the patch to a temporary file so we can feed it to `patch` inside
-  // the sandbox.  The temp file is placed inside cwd so it is visible after
-  // the bind-mount.
   let tmpName = `.patch-${process.pid}-${Date.now()}.tmp`;
-  let tmpPath = path.join(cwd, tmpName);
-  fs.writeFileSync(tmpPath, patch);
+  let tmpPath = `${cwd}/${tmpName}`;
+  await fs.writeFile(tmpPath, patch);
 
-  let cmd = [
-    "--unshare-all",
-    "--dev", "/dev",
-    "--proc", "/proc",
-    "--ro-bind", "/usr", "/usr",
-    "--ro-bind", "/lib", "/lib",
-    "--ro-bind", "/bin", "/bin",
-    "--bind", cwd, `/${name}`,
-    "--chdir", `/${name}`,
-    "patch",
-    "--strip=1",       // strip leading a/ b/ path components
-    "--unified",       // expect unified diff format
-    "--fuzz=2",        // allow some fuzz for imprecise context lines
-    "--batch",         // non-interactive: never prompt
-    "--input", tmpName
-  ];
-
-  let child = child_process.execFile("bwrap", cmd, (error, stdout, stderr) => {
-    // Clean up the temp file regardless of outcome
-    try { fs.unlinkSync(tmpPath); } catch (_) {}
-
-    if (error)
-      reject(new Error(stdout + stderr));
-    else
-      resolve({ stdout, stderr });
-  });
-
-  child.stdin.end();
-
-  return promise;
+  try {
+    return await bwrap([
+      "patch",
+      "--strip=1",       // strip leading a/ b/ path components
+      "--unified",       // expect unified diff format
+      "--fuzz=2",        // allow some fuzz for imprecise context lines
+      "--batch",         // non-interactive: never prompt
+      "--input", tmpName
+    ]);
+  } finally {
+    await fs.unlink(tmpPath);
+  };
 }
 
 export function argsToString({ patch }) {

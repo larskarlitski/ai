@@ -1,6 +1,4 @@
-import child_process from "node:child_process";
-import path from "node:path";
-import util from "node:util";
+import bwrap from "./Bubblewrap.js";
 
 export const schema = Object.freeze({
   name: "execute",
@@ -14,31 +12,7 @@ export const schema = Object.freeze({
 });
 
 export function call({ args }) {
-  let { promise, resolve, reject } = Promise.withResolvers();
-  let cwd = process.cwd();
-  let name = path.basename(cwd);
-  let cmd = [
-    "--unshare-all",
-    "--dev", "/dev",
-    "--proc", "/proc",
-    "--ro-bind", "/usr", "/usr",
-    "--ro-bind", "/lib", "/lib",
-    "--ro-bind", "/bin", "/bin",
-    "--bind", cwd, `/${name}`,
-    "--chdir", `/${name}`,
-    ...args
-  ];
-
-  let child = child_process.execFile("bwrap", cmd, (error, stdout, stderr) => {
-    if (error)
-      reject(error);
-    else
-      resolve({ stdout, stderr });
-  });
-
-  child.stdin.end();
-
-  return promise;
+  return bwrap(args);
 }
 
 export function argsToString({ args }) {
