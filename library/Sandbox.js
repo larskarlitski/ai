@@ -80,10 +80,7 @@ export function execute(args, options = {}) {
       resolve({ stdout, stderr });
   });
 
-  if (options.stdin !== undefined)
-    child.stdin.end(options.stdin);
-  else
-    child.stdin.end();
+  child.stdin.end(options.stdin);
 
   return promise;
 }

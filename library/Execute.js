@@ -6,32 +6,33 @@ export const schema = Object.freeze({
   parameters: {
     type: "object",
     properties: {
-      args: { type: "array", items: { type: "string" } },
+      command: {
+        description: "The command to execute",
+        type: "string"
+      },
       stdin: {
-        type: "string",
-        description: "Optional string to pass as standard input to the command"
+        description: "Optional string to pass as standard input to the command",
+        type: "string"
       }
     }
   }
 });
 
-export function validateArgs(args) {
+function validateArgs(args) {
   return (
-    typeof args === "object" && args !== null &&
-    Array.isArray(args.args) && args.args.every(a => typeof a === "string") &&
+    typeof args === "object" &&
+    args !== null &&
+    typeof args.command === "string" &&
     (args.stdin === undefined || typeof args.stdin === "string")
   );
 }
 
-export function call({ args, stdin }) {
-  return Sandbox.execute(args, { stdin });
-}
+export function prepare(args) {
+  if (!validateArgs(args))
+    throw new TypeError(`Invalid arguments: ${args}`);
 
-export function argsToString({ args, stdin }) {
-  let cmd = args.map(
-    a => /^[A-Za-z0-9._/-]+$/.test(a) ? a : JSON.stringify(a)
-  ).join(" ");
-  if (stdin !== undefined)
-    cmd += " (with stdin)";
-  return cmd;
+  return {
+    message: args.stdin !== undefined ? `${args.command} (with stdin)` : args.command,
+    call: () => Sandbox.execute([ "bash", "-c", args.command ], { stdin: args.stdin })
+  };
 }

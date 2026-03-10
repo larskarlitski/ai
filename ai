@@ -11,7 +11,6 @@ import Gemini from "./library/Gemini.js";
 import OpenAI from "./library/OpenAI.js";
 
 import * as Execute from "./library/Execute.js";
-import * as Patch from "./library/Patch.js";
 
 let providers = [
   {
@@ -34,7 +33,7 @@ let providers = [
   }
 ];
 
-let tools = { execute: Execute, patch: Patch };
+let tools = { execute: Execute };
 
 async function callTool(name, args) {
   try {
@@ -42,15 +41,22 @@ async function callTool(name, args) {
     if (tool === undefined)
       throw new Error(`Tool not found: ${name}`);
 
-    if (!tool.validateArgs(args)) {
-      console.log(`${name.toUpperCase()} [invalid arguments] ${args}`);
-      throw new TypeError(`Invalid arguments: expected ${JSON.stringify(tool.schema)}`);
-    }
+    let { message, call } = tool.prepare(args);
 
-    console.log(`${name.toUpperCase()} ${tool.argsToString(args)}`);
+    console.log(TextWrap.wrap(message, {
+      width: process.stdout.columns ?? 80,
+      margin: 2,
+      marker: "→"
+    }));
 
-    return await tool.call(args);
+    return await call(args);
   } catch (error) {
+    console.error(TextWrap.wrap(`Error calling tool ${name}: ${error}`, {
+      width: process.stdout.columns ?? 80,
+      margin: 2,
+      marker: "✘"
+    }));
+
     if (typeof error.toJSON === "function")
       return { error };
     else
@@ -58,27 +64,15 @@ async function callTool(name, args) {
   }
 }
 
-// remove once on node 24, which has RegExp.escape
-function regExpEscape(s) {
-  return s.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
-}
-
 function message(text, options = {}) {
-  let wrapOptions = {
+  console.log();
+  console.log(TextWrap.wrap(text, {
     width: process.stdout.columns ?? 80,
-    margin: 2
-  };
-
-  if (options.type !== undefined) {
-    let type = options.type.toUpperCase();
-    wrapOptions.prefixPatterns = [ regExpEscape(type) ];
-    text = `${type} ${text}`;
-  } else {
-    wrapOptions.prefixPatterns = [ "#+", "\\s*[*\\-]", "\\s*\\d+\\." ];
-    text = `\n${text}\n`;
-  }
-
-  console.log(TextWrap.wrap(text, wrapOptions));
+    prefixPatterns: [ "#+\\s+", "\\s*[*\\-]\\s+", "\\s*\\d+\\.\\s+" ],
+    margin: 2,
+    marker: "»"
+  }));
+  console.log();
 }
 
 function modelRunner(model, baseURL) {
@@ -137,9 +131,13 @@ async function main() {
 
   try {
     let { tokens } = await run(prompt, tools, message);
-    console.log(`DONE ${tokens} tokens`);
+    console.log(`■ ${tokens} tokens`);
   } catch (error) {
-    console.error(options.verbose ? error.stack : error);
+    console.error(TextWrap.wrap(String(error), {
+      width: process.stdout.columns ?? 80,
+      margin: 2,
+      marker: "✘"
+    }));
   }
 }
 
