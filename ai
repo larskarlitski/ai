@@ -4,6 +4,7 @@ import * as streamconsumers from "node:stream/consumers";
 import fs from "node:fs/promises";
 import process from "node:process";
 import util from "node:util";
+import * as TextWrap from "./library/TextWrap.js";
 
 import Anthropic from "./library/Anthropic.js";
 import Gemini from "./library/Gemini.js";
@@ -57,14 +58,27 @@ async function callTool(name, args) {
   }
 }
 
-function message(message, options = {}) {
+// remove once on node 24, which has RegExp.escape
+function regExpEscape(s) {
+  return s.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
+}
+
+function message(text, options = {}) {
+  let wrapOptions = {
+    width: process.stdout.columns ?? 80,
+    margin: 2
+  };
+
   if (options.type !== undefined) {
-    console.log(`${options.type.toUpperCase()} ${message}`);
+    let type = options.type.toUpperCase();
+    wrapOptions.prefixPatterns = [ regExpEscape(type) ];
+    text = `${type} ${text}`;
   } else {
-    console.log();
-    console.log(message);
-    console.log();
+    wrapOptions.prefixPatterns = [ "#+", "\\s*[*\\-]", "\\s*\\d+\\." ];
+    text = `\n${text}\n`;
   }
+
+  console.log(TextWrap.wrap(text, wrapOptions));
 }
 
 function modelRunner(model, baseURL) {
