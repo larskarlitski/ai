@@ -2,16 +2,16 @@ import * as Sandbox from "./Sandbox.js";
 
 const schema = Object.freeze({
   name: "execute",
-  description: "Executes a command",
+  description: "Executes a bash command inside a sandboxed environment",
   parameters: {
     type: "object",
     properties: {
       command: {
-        description: "The command to execute",
+        description: "The command to execute (passed to `bash -c`)",
         type: "string"
       },
       stdin: {
-        description: "Optional string to pass as standard input to the command",
+        description: "Standard input for the command (optional)",
         type: "string"
       }
     }
@@ -41,6 +41,10 @@ export default class Execute {
       s += " (with stdin)";
 
     return s;
+  }
+
+  get symbol() {
+    return "→";
   }
 
   call() {

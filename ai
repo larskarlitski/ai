@@ -10,6 +10,7 @@ import Anthropic from "./library/Anthropic.js";
 import Gemini from "./library/Gemini.js";
 import OpenAI from "./library/OpenAI.js";
 
+import Edit from "./library/Edit.js";
 import Execute from "./library/Execute.js";
 
 let providers = [
@@ -33,7 +34,7 @@ let providers = [
   }
 ];
 
-let tools = { execute: Execute };
+let tools = { edit: Edit, execute: Execute };
 
 async function callTool(name, args) {
   try {
@@ -46,7 +47,7 @@ async function callTool(name, args) {
     console.log(TextWrap.wrap(tool.toString(), {
       width: process.stdout.columns ?? 80,
       margin: 2,
-      marker: "→"
+      marker: tool.symbol
     }));
 
     return await tool.call();
