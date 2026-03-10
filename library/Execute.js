@@ -1,6 +1,6 @@
 import * as Sandbox from "./Sandbox.js";
 
-export const schema = Object.freeze({
+const schema = Object.freeze({
   name: "execute",
   description: "Executes a command",
   parameters: {
@@ -18,21 +18,32 @@ export const schema = Object.freeze({
   }
 });
 
-function validateArgs(args) {
-  return (
-    typeof args === "object" &&
-    args !== null &&
-    typeof args.command === "string" &&
-    (args.stdin === undefined || typeof args.stdin === "string")
-  );
-}
+export default class Execute {
+  static get schema() {
+    return schema;
+  }
 
-export function prepare(args) {
-  if (!validateArgs(args))
-    throw new TypeError(`Invalid arguments: ${args}`);
+  #args;
 
-  return {
-    message: args.stdin !== undefined ? `${args.command} (with stdin)` : args.command,
-    call: () => Sandbox.execute([ "bash", "-c", args.command ], { stdin: args.stdin })
-  };
+  constructor(args) {
+    if (typeof args !== "object" || args === null ||
+        typeof args.command !== "string" ||
+        (args.stdin !== undefined && typeof args.stdin !== "string"))
+      throw new TypeError("Invalid arguments");
+
+    this.#args = args;
+  }
+
+  toString() {
+    let s = this.#args.command;
+
+    if (this.#args.stdin !== undefined)
+      s += " (with stdin)";
+
+    return s;
+  }
+
+  call() {
+    return Sandbox.execute([ "bash", "-c", this.#args.command ], { stdin: this.#args.stdin })
+  }
 }

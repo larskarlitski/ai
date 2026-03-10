@@ -10,7 +10,7 @@ import Anthropic from "./library/Anthropic.js";
 import Gemini from "./library/Gemini.js";
 import OpenAI from "./library/OpenAI.js";
 
-import * as Execute from "./library/Execute.js";
+import Execute from "./library/Execute.js";
 
 let providers = [
   {
@@ -37,21 +37,21 @@ let tools = { execute: Execute };
 
 async function callTool(name, args) {
   try {
-    let tool = tools[name];
-    if (tool === undefined)
-      throw new Error(`Tool not found: ${name}`);
+    let cls = tools[name];
+    if (cls === undefined)
+      throw new Error(`Unknown tool: ${name}`);
 
-    let { message, call } = tool.prepare(args);
+    let tool = new cls(args);
 
-    console.log(TextWrap.wrap(message, {
+    console.log(TextWrap.wrap(tool.toString(), {
       width: process.stdout.columns ?? 80,
       margin: 2,
       marker: "→"
     }));
 
-    return await call(args);
+    return await tool.call();
   } catch (error) {
-    console.error(TextWrap.wrap(`Error calling tool ${name}: ${error}`, {
+    console.error(TextWrap.wrap(error.message, {
       width: process.stdout.columns ?? 80,
       margin: 2,
       marker: "✘"
@@ -129,16 +129,16 @@ async function main() {
   if (!process.stdin.isTTY)
     prompt.user.push(await streamconsumers.text(process.stdin));
 
-  try {
-    let { tokens } = await run(prompt, tools, message);
-    console.log(`■ ${tokens} tokens`);
-  } catch (error) {
-    console.error(TextWrap.wrap(String(error), {
-      width: process.stdout.columns ?? 80,
-      margin: 2,
-      marker: "✘"
-    }));
-  }
+  let { tokens } = await run(prompt, tools, message);
+  console.log(`■ ${tokens} tokens`);
 }
 
-await main();
+try {
+  await main();
+} catch (error) {
+  console.error(TextWrap.wrap(String(error.stack), {
+    width: process.stdout.columns ?? 80,
+    margin: 2,
+    marker: "✘"
+  }));
+}
