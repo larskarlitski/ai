@@ -1,7 +1,7 @@
 export function wrap(text, options = {}) {
-  let margin = options.margin ?? 0;
-  let width = (options.width ?? 80) - (2 * margin);
-  let marker = (options.marker ?? "").padEnd(margin);
+  let margin = Number(options.margin ?? 0);
+  let width = Number(options.width ?? 80) - (2 * margin);
+  let marker = String(options.marker ?? "").padEnd(margin);
   let prefixRegExp = (options.prefixPatterns
     ? new RegExp("^((?:" + options.prefixPatterns.join("|") + "))")
     : new RegExp("^()")
