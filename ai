@@ -45,6 +45,7 @@ function print(message, options = {}) {
 }
 
 function printModelMessage(text) {
+  console.log();
   print(text, {
     marker: "⏵",
     prefixPatterns: [ "#+\\s+", "\\s*[*\\-]\\s+", "\\s*\\d+\\.\\s+" ]
@@ -68,7 +69,6 @@ async function callTool(name, args) {
     result = typeof error.toJSON === "function" ? error : { error: String(error) };
   }
 
-  console.log();
   return result;
 }
 
