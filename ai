@@ -36,44 +36,40 @@ let providers = [
 
 let tools = { edit: Edit, execute: Execute };
 
+function print(message, options = {}) {
+  console.log(TextWrap.wrap(message, {
+    width: process.stdout.columns ?? 80,
+    margin: 2,
+    ...options
+  }));
+}
+
+function printModelMessage(text) {
+  print(text, {
+    marker: "⏵",
+    prefixPatterns: [ "#+\\s+", "\\s*[*\\-]\\s+", "\\s*\\d+\\.\\s+" ]
+  });
+  console.log();
+}
+
 async function callTool(name, args) {
+  let result;
+
   try {
     let cls = tools[name];
     if (cls === undefined)
       throw new Error(`Unknown tool: ${name}`);
 
     let tool = new cls(args);
-
-    console.log(TextWrap.wrap(tool.toString(), {
-      width: process.stdout.columns ?? 80,
-      margin: 2,
-      marker: tool.symbol
-    }));
-
-    return await tool.call();
+    print(tool.toString(), { marker: tool.symbol });
+    result = await tool.call();
   } catch (error) {
-    console.error(TextWrap.wrap(`Error calling ${name} tool: ${error}`, {
-      width: process.stdout.columns ?? 80,
-      margin: 2,
-      marker: "✘"
-    }));
-
-    if (typeof error.toJSON === "function")
-      return { error };
-    else
-      return { error: String(error) };
+    print(`Error calling ${name} tool: ${error}`, { marker: "✘" });
+    result = typeof error.toJSON === "function" ? error : { error: String(error) };
   }
-}
 
-function message(text, options = {}) {
   console.log();
-  console.log(TextWrap.wrap(text, {
-    width: process.stdout.columns ?? 80,
-    prefixPatterns: [ "#+\\s+", "\\s*[*\\-]\\s+", "\\s*\\d+\\.\\s+" ],
-    margin: 2,
-    marker: "⏵"
-  }));
-  console.log();
+  return result;
 }
 
 function modelRunner(model, baseURL) {
@@ -90,7 +86,7 @@ function modelRunner(model, baseURL) {
     model,
     tools: Object.values(tools).map(t => t.schema),
     callTool,
-    message,
+    message: printModelMessage,
     baseURL
   });
 }
@@ -102,7 +98,6 @@ function readFiles(paths) {
 async function main() {
   let { values: options, positionals } = util.parseArgs({
     options: {
-      verbose: { type: "boolean" },
       model: { type: "string", default: "gpt-5.2-codex" },
       system: { type: "string", multiple: true },
       file: { type: "string", multiple: true },
@@ -130,7 +125,7 @@ async function main() {
   if (!process.stdin.isTTY)
     prompt.user.push(await streamconsumers.text(process.stdin));
 
-  let { tokens } = await run(prompt, tools, message);
+  let { tokens } = await run(prompt);
   console.log(`■ ${tokens} tokens`);
 }
 

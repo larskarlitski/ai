@@ -65,7 +65,7 @@ async function run(prompt, options) {
         case "reasoning":
           // it's usually empty
           for (let summary of output.summary)
-            options?.message(summary, { type: "reason" });
+            options?.message(summary);
           break;
 
         case "function_call":
