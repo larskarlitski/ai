@@ -2,24 +2,6 @@ import child_process from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 
-class ProcessFailedError extends Error {
-  constructor(message, code, stdout, stderr) {
-    super(message);
-    this.code = code;
-    this.stdout = stdout;
-    this.stderr = stderr;
-  }
-
-  toJSON() {
-    return {
-      message: this.message,
-      code: this.code,
-      stdout: this.stdout,
-      stderr: this.stderr
-    };
-  }
-}
-
 function bwrap(argv) {
   let cwd = process.cwd();
   let name = path.basename(cwd);
@@ -74,10 +56,16 @@ export function execute(args, options = {}) {
   let cmd = process.platform === "darwin" ? sandboxExec(args) : bwrap(args);
 
   let child = child_process.execFile(cmd[0], cmd.slice(1), (error, stdout, stderr) => {
-    if (error)
-      reject(new ProcessFailedError(error.message, error.code, stdout, stderr));
-    else
-      resolve({ stdout, stderr });
+    let code = 0;
+    if (error) {
+      if (typeof error.code !== "number") {
+        reject(error);
+        return;
+      }
+      code = error.code;
+    }
+
+    resolve({ code, stdout, stderr });
   });
 
   child.stdin.end(options.stdin);

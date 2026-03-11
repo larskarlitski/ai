@@ -47,7 +47,18 @@ export default class Execute {
     return "→";
   }
 
-  call() {
-    return Sandbox.execute([ "bash", "-c", this.#args.command ], { stdin: this.#args.stdin })
+  async call() {
+    try {
+      let { code, stdout } = await Sandbox.execute(
+        [ "bash", "-c", "exec 2>&1\n" + this.#args.command ],
+        { stdin: this.#args.stdin }
+      );
+      if (code === 0)
+        return stdout;
+      else
+        return stdout + `\nCommand exited with code ${code}`;
+    } catch (error) {
+      return String(error);
+    }
   }
 }
