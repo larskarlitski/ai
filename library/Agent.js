@@ -1,4 +1,4 @@
-import * as TextWrap from "./TextWrap.js";
+import * as Log from "./Log.js";
 
 import * as Anthropic from "./Anthropic.js";
 import * as Gemini from "./Gemini.js";
@@ -9,47 +9,24 @@ import Execute from "./Execute.js";
 
 let tools = { edit: Edit, execute: Execute };
 
-function print(message, options = {}) {
-  if (message === undefined) {
-    console.log();
-    return;
-  }
-
-  console.log(TextWrap.wrap(message, {
-    width: process.stdout.columns ?? 80,
-    margin: 2,
-    ...options
-  }));
-}
-
-function printModelMessage(text) {
-  console.log();
-  print(text, {
-    marker: "⏵",
-    prefixPatterns: [ "#+\\s+", "\\s*[*\\-]\\s+", "\\s*\\d+\\.\\s+" ]
-  });
-  console.log();
-}
-
 async function callTool(name, args) {
-  let result;
-
   try {
     let cls = tools[name];
     if (cls === undefined)
       throw new Error(`Unknown tool: ${name}`);
 
     let tool = new cls(args);
-    print(tool.toString(), { marker: tool.symbol });
-    result = await tool.call();
-  } catch (error) {
-    print(String(error), { marker: "✘" });
-    print(JSON.stringify(args, null, 2));
-    print();
-    result = typeof error.toJSON === "function" ? error : { error: String(error) };
-  }
+    Log.oneline(tool.symbol, tool.toString());
 
-  return result;
+    let output = await tool.call();
+    if (output !== undefined)
+      Log.detail(output);
+
+    return output;
+  } catch (error) {
+    Log.detail(`${error}\n${JSON.stringify(args, 0, 2)}`);
+    return typeof error.toJSON === "function" ? error : { error: String(error) };
+  }
 }
 
 export default class Agent {
@@ -77,7 +54,7 @@ export default class Agent {
       model: this.#model,
       tools: Object.values(tools).map(t => t.schema),
       callTool: callTool,
-      message: printModelMessage,
+      message: text => Log.textBlock("⏵", text),
       baseURL: this.#baseURL
     });
   }

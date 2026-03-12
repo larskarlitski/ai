@@ -75,7 +75,7 @@ export async function run(prompt, options) {
             call_id: output.call_id,
             output: JSON.stringify(
               await options.callTool(output.name, JSON.parse(output.arguments))
-            )
+            ) ?? ""
           });
           break;
 

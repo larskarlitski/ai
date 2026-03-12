@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-import * as TextWrap from "./library/TextWrap.js";
+import * as Log from "./library/Log.js";
 import * as streamconsumers from "node:stream/consumers";
+import Agent from "./library/Agent.js";
 import fs from "node:fs/promises";
 import process from "node:process";
 import util from "node:util";
-import Agent from "./library/Agent.js";
 
 function readFiles(paths) {
   return Promise.all(paths.map(path => fs.readFile(path, "utf8")));
@@ -45,15 +45,11 @@ async function main() {
     prompt.user.push(await streamconsumers.text(process.stdin));
 
   let { tokens } = await agent.run(prompt);
-  console.log(`■ ${tokens} tokens`);
+  Log.oneline("■", `${tokens} tokens`);
 }
 
 try {
   await main();
 } catch (error) {
-  console.error(TextWrap.wrap(String(error.stack), {
-    width: process.stdout.columns ?? 80,
-    margin: 2,
-    marker: "✘"
-  }));
+  Log.block("✘", String(error.stack));
 }
