@@ -1,3 +1,8 @@
+export const apiKeyName = "OPENAI_API_KEY";
+export const modelPrefix = "gpt-";
+
+const baseURL = "https://api.openai.com/";
+
 async function call(previousResponseId, input, options) {
   if (options.apiKey === undefined)
     throw new Error("Missing OPENAI_API_KEY");
@@ -6,7 +11,7 @@ async function call(previousResponseId, input, options) {
   for (let tool of options.tools)
     tools.push({ type: "function", ...tool });
 
-  let url = new URL("v1/responses", options.baseURL);
+  let url = new URL("v1/responses", options.baseURL ?? baseURL);
   let response = await fetch(url, {
     method: "POST",
     headers: {
@@ -35,7 +40,7 @@ async function call(previousResponseId, input, options) {
   return reply;
 }
 
-async function run(prompt, options) {
+export async function run(prompt, options) {
   let input = [];
   for (let [ role, content ] of Object.entries(prompt))
     input.push(...content.map(c => ({ role, content: c })));
@@ -88,8 +93,4 @@ async function run(prompt, options) {
   }
 
   return { tokens };
-}
-
-export default function(options) {
-  return prompt => run(prompt, options);
 }

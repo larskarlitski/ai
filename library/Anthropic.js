@@ -1,3 +1,8 @@
+export const apiKeyName = "ANTHROPIC_API_KEY";
+export const modelPrefix = "claude-";
+
+const baseURL = "https://api.anthropic.com/";
+
 async function call(input, options) {
   if (options.apiKey === undefined)
     throw new Error("Missing ANTHROPIC_API_KEY");
@@ -11,7 +16,7 @@ async function call(input, options) {
     });
   }
 
-  let url = new URL("v1/messages", options.baseURL);
+  let url = new URL("v1/messages", options.baseURL ?? baseURL);
   let response = await fetch(url, {
     method: "POST",
     headers: {
@@ -36,7 +41,7 @@ async function call(input, options) {
   return reply;
 }
 
-async function run(prompt, options) {
+export async function run(prompt, options) {
   let input = {};
   if (prompt.system !== undefined && prompt.system.length > 0)
     input.system = prompt.system.map(text => ({ type: "text", text }));
@@ -87,8 +92,4 @@ async function run(prompt, options) {
   }
 
   return { tokens };
-}
-
-export default function(options) {
-  return prompt => run(prompt, options);
 }

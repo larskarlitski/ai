@@ -1,94 +1,18 @@
 #!/usr/bin/env node
 
+import * as TextWrap from "./library/TextWrap.js";
 import * as streamconsumers from "node:stream/consumers";
 import fs from "node:fs/promises";
 import process from "node:process";
 import util from "node:util";
-import * as TextWrap from "./library/TextWrap.js";
+import Agent from "./library/Agent.js";
 
-import Anthropic from "./library/Anthropic.js";
-import Gemini from "./library/Gemini.js";
-import OpenAI from "./library/OpenAI.js";
+function getAPIKey(name) {
+  let key = process.env[name];
+  if (key === undefined)
+    throw new Error(`API key not found: ${name}`);
 
-import Edit from "./library/Edit.js";
-import Execute from "./library/Execute.js";
-
-let providers = [
-  {
-    runner: OpenAI,
-    prefix: "gpt-",
-    baseURL: "https://api.openai.com/",
-    apiKey: process.env.OPENAI_API_KEY
-  },
-  {
-    runner: Gemini,
-    prefix: "gemini-",
-    baseURL: "https://generativelanguage.googleapis.com/",
-    apiKey: process.env.GEMINI_API_KEY
-  },
-  {
-    runner: Anthropic,
-    prefix: "claude-",
-    baseURL: "https://api.anthropic.com/",
-    apiKey: process.env.ANTHROPIC_API_KEY
-  }
-];
-
-let tools = { edit: Edit, execute: Execute };
-
-function print(message, options = {}) {
-  console.log(TextWrap.wrap(message, {
-    width: process.stdout.columns ?? 80,
-    margin: 2,
-    ...options
-  }));
-}
-
-function printModelMessage(text) {
-  console.log();
-  print(text, {
-    marker: "⏵",
-    prefixPatterns: [ "#+\\s+", "\\s*[*\\-]\\s+", "\\s*\\d+\\.\\s+" ]
-  });
-  console.log();
-}
-
-async function callTool(name, args) {
-  let result;
-
-  try {
-    let cls = tools[name];
-    if (cls === undefined)
-      throw new Error(`Unknown tool: ${name}`);
-
-    let tool = new cls(args);
-    print(tool.toString(), { marker: tool.symbol });
-    result = await tool.call();
-  } catch (error) {
-    print(`Error calling ${name} tool: ${error}`, { marker: "✘" });
-    result = typeof error.toJSON === "function" ? error : { error: String(error) };
-  }
-
-  return result;
-}
-
-function modelRunner(model, baseURL) {
-  let provider = providers.find(p => model.startsWith(p.prefix));
-  if (provider === undefined)
-    throw new Error(`Unknown model name: ${model}`);
-
-  baseURL = new URL(baseURL ?? provider.baseURL);
-  if (!baseURL.pathname.endsWith("/"))
-    baseURL.pathname += "/";
-
-  return provider.runner({
-    apiKey: provider.apiKey,
-    model,
-    tools: Object.values(tools).map(t => t.schema),
-    callTool,
-    message: printModelMessage,
-    baseURL
-  });
+  return key;
 }
 
 function readFiles(paths) {
@@ -107,7 +31,11 @@ async function main() {
     allowPositionals: true
   });
 
-  let run = modelRunner(options.model, options["base-url"]);
+  let agent = new Agent(options.model, {
+    getAPIKey,
+    baseURL: options["base-url"]
+  });
+
   let prompt = {
     system: [],
     user: positionals
@@ -125,7 +53,7 @@ async function main() {
   if (!process.stdin.isTTY)
     prompt.user.push(await streamconsumers.text(process.stdin));
 
-  let { tokens } = await run(prompt);
+  let { tokens } = await agent.run(prompt);
   console.log(`■ ${tokens} tokens`);
 }
 

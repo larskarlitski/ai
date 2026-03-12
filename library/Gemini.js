@@ -1,8 +1,13 @@
+export const apiKeyName = "GEMINI_API_KEY";
+export const modelPrefix = "gemini-";
+
+const baseURL = "https://generativelanguage.googleapis.com/";
+
 async function call(input, options) {
   if (options.apiKey === undefined)
     throw new Error("Missing GEMINI_API_KEY");
 
-  let url = new URL(`v1beta/models/${options.model}:generateContent`, options.baseURL);
+  let url = new URL(`v1beta/models/${options.model}:generateContent`, options.baseURL ?? baseURL);
   url.searchParams.set("key", options.apiKey);
 
   let response = await fetch(url, {
@@ -28,7 +33,7 @@ async function call(input, options) {
   return reply;
 }
 
-async function run(prompt, options) {
+export async function run(prompt, options) {
   let input = {};
   if (prompt.system !== undefined && prompt.system.length > 0)
     input.system_instruction = { parts: prompt.system.map(text => ({ text })) };
@@ -83,8 +88,4 @@ async function run(prompt, options) {
   }
 
   return { tokens };
-}
-
-export default function(options) {
-  return prompt => run(prompt, options);
 }
