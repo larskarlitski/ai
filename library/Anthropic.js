@@ -1,7 +1,5 @@
 import * as Secret from "./Secret.js";
 
-export const modelPrefix = "claude-";
-
 const baseURL = "https://api.anthropic.com/";
 
 async function call(input, options) {

@@ -1,7 +1,5 @@
 import * as Secret from "./Secret.js";
 
-export const modelPrefix = "gemini-";
-
 const baseURL = "https://generativelanguage.googleapis.com/";
 
 async function call(input, options) {

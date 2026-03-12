@@ -1,7 +1,5 @@
 import * as Secret from "./Secret.js";
 
-export const modelPrefix = "gpt-";
-
 const baseURL = "https://api.openai.com/";
 
 async function call(previousResponseId, input, options) {

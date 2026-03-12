@@ -7,7 +7,6 @@ import * as OpenAI from "./OpenAI.js";
 import Edit from "./Edit.js";
 import Execute from "./Execute.js";
 
-let providers = [ Anthropic, Gemini, OpenAI ];
 let tools = { edit: Edit, execute: Execute };
 
 function print(message, options = {}) {
@@ -61,8 +60,13 @@ export default class Agent {
   constructor(model, options) {
     this.#model = model
 
-    this.#provider = providers.find(p => model.startsWith(p.modelPrefix));
-    if (this.#provider === undefined)
+    if (model.startsWith("claude-"))
+      this.#provider = Anthropic;
+    else if (model.startsWith("gemini-"))
+      this.#provider = Gemini;
+    else if (model.startsWith("gpt-"))
+      this.#provider = OpenAI;
+    else
       throw new Error(`Unknown model: ${model}`);
 
     this.#baseURL = options.baseURL;
