@@ -7,14 +7,6 @@ import process from "node:process";
 import util from "node:util";
 import Agent from "./library/Agent.js";
 
-function getAPIKey(name) {
-  let key = process.env[name];
-  if (key === undefined)
-    throw new Error(`API key not found: ${name}`);
-
-  return key;
-}
-
 function readFiles(paths) {
   return Promise.all(paths.map(path => fs.readFile(path, "utf8")));
 }
@@ -32,7 +24,6 @@ async function main() {
   });
 
   let agent = new Agent(options.model, {
-    getAPIKey,
     baseURL: options["base-url"]
   });
 

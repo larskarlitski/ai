@@ -1,14 +1,12 @@
-export const apiKeyName = "GEMINI_API_KEY";
+import * as Secret from "./Secret.js";
+
 export const modelPrefix = "gemini-";
 
 const baseURL = "https://generativelanguage.googleapis.com/";
 
 async function call(input, options) {
-  if (options.apiKey === undefined)
-    throw new Error("Missing GEMINI_API_KEY");
-
   let url = new URL(`v1beta/models/${options.model}:generateContent`, options.baseURL ?? baseURL);
-  url.searchParams.set("key", options.apiKey);
+  url.searchParams.set("key", Secret.get("GEMINI_API_KEY"));
 
   let response = await fetch(url, {
     method: "POST",

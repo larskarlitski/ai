@@ -1,12 +1,10 @@
-export const apiKeyName = "OPENAI_API_KEY";
+import * as Secret from "./Secret.js";
+
 export const modelPrefix = "gpt-";
 
 const baseURL = "https://api.openai.com/";
 
 async function call(previousResponseId, input, options) {
-  if (options.apiKey === undefined)
-    throw new Error("Missing OPENAI_API_KEY");
-
   let tools = [];
   for (let tool of options.tools)
     tools.push({ type: "function", ...tool });
@@ -15,7 +13,7 @@ async function call(previousResponseId, input, options) {
   let response = await fetch(url, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${options.apiKey}`,
+      "Authorization": `Bearer ${Secret.get("OPENAI_API_KEY")}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({

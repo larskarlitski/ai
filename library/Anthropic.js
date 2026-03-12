@@ -1,12 +1,10 @@
-export const apiKeyName = "ANTHROPIC_API_KEY";
+import * as Secret from "./Secret.js";
+
 export const modelPrefix = "claude-";
 
 const baseURL = "https://api.anthropic.com/";
 
 async function call(input, options) {
-  if (options.apiKey === undefined)
-    throw new Error("Missing ANTHROPIC_API_KEY");
-
   let tools = [];
   for (let tool of options.tools) {
     tools.push({
@@ -20,7 +18,7 @@ async function call(input, options) {
   let response = await fetch(url, {
     method: "POST",
     headers: {
-      "x-api-key": options.apiKey,
+      "x-api-key": Secret.get("ANTHROPIC_API_KEY"),
       "anthropic-version": "2023-06-01",
       "anthropic-beta": "prompt-caching-2024-07-31",
       "content-type": "application/json"

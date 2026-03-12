@@ -55,7 +55,6 @@ async function callTool(name, args) {
 
 export default class Agent {
   #provider;
-  #apiKey;
   #baseURL;
   #model;
 
@@ -66,14 +65,12 @@ export default class Agent {
     if (this.#provider === undefined)
       throw new Error(`Unknown model: ${model}`);
 
-    this.#apiKey = options.getAPIKey(this.#provider.apiKeyName);
     this.#baseURL = options.baseURL;
   }
 
   run(prompt) {
     return this.#provider.run(prompt, {
       model: this.#model,
-      apiKey: this.#apiKey,
       tools: Object.values(tools).map(t => t.schema),
       callTool: callTool,
       message: printModelMessage,
