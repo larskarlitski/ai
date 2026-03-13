@@ -58,7 +58,7 @@ export async function run(prompt, options) {
       input.messages.push({ role: "assistant", content: [ block ] });
       switch (block.type) {
         case "text":
-          Log.textBlock("⏵", block.text.trim());
+          Log.prose("⏵", block.text.trim());
           break;
 
         case "tool_use":

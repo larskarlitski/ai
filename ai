@@ -92,7 +92,7 @@ async function main() {
 
   try {
     let { tokens } = await agent.run(prompt, workspace);
-    Log.oneline("■", `${tokens} tokens`);
+    Log.info("■", `${tokens} tokens`);
   } finally {
     if (workspace !== undefined)
       await Git.teardownWorkspace(workspace, { pushChanges: true });
@@ -102,5 +102,5 @@ async function main() {
 try {
   await main();
 } catch (error) {
-  Log.block("✘", String(error.stack));
+  Log.error("✘", error);
 }

@@ -29,12 +29,7 @@ export default class Execute {
   #readOnly;
 
   constructor(args, workspace) {
-    if (typeof args !== "object" || args === null ||
-        typeof args.command !== "string" ||
-        (args.stdin !== undefined && typeof args.stdin !== "string"))
-      throw new TypeError("Invalid arguments");
-
-    this.#args = args;
+    this.#args = args ?? {};
 
     if (workspace !== undefined) {
       this.#workspace = workspace;
@@ -59,13 +54,20 @@ export default class Execute {
   }
 
   async call() {
+    if (typeof this.#args.command !== "string")
+      return { error: "Invalid argument: command must be a string" };
+    if (this.#args.stdin !== undefined && typeof this.#args.stdin !== "string")
+      return { error: "Invalid argument: stdin must be a string" };
+
     let { code, stdout } = await Sandbox.execute(
       [ "bash", "-c", "exec 2>&1\n" + this.#args.command ],
       { cwd: this.#workspace, readOnly: this.#readOnly, stdin: this.#args.stdin }
     );
-    if (code === 0)
-      return stdout.trim();
-    else
-      return stdout.trim() + `\nCommand exited with code ${code}`;
+
+    let output = stdout.trim();
+    if (code !== 0)
+      output += `\nCommand exited with code ${code}`;
+
+    return { output };
   }
 }

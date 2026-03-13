@@ -1,52 +1,121 @@
 import process from "node:process";
-import * as TextWrap from "./TextWrap.js";
 
-const margin = 2;
-let last;
+const padding = 2;
+let newline = false;
 
-export function oneline(marker, text) {
-  let width = (process.stdout.columns ?? 80) - 2 * margin;
+function wrapLines(lines, width) {
+  let out = [];
+  for (let line of lines) {
+    let words = line.trim().split(/\s+/);
 
-  if (last === "detail" || last === "block")
+    if (words.length === 0) {
+      out.push("");
+      continue;
+    }
+
+    let current = words[0];
+    for (let i = 1; i < words.length; i++) {
+      let word = words[i];
+      if (current.length + 1 + word.length <= width) {
+        current += ` ${word}`;
+      } else {
+        out.push(current);
+        current = word;
+      }
+    }
+    out.push(current);
+  }
+
+  return out;
+}
+
+function wrapProseLines(lines, width) {
+  let pattern = /^(\s*)((?:#+|[-*]|\d+\.) )?(.*)$/
+
+  let out = [];
+  for (let line of lines) {
+    let m = line.match(pattern);
+    let indent = m[1];
+    let leading = m[2] ?? "";
+    let words = m[3].trim().split(/\s+/);
+
+    if (leading.length === 0 && words.length === 0) {
+      out.push("");
+      continue;
+    }
+
+    let current = `${indent}${leading}${words[0]}`;
+    for (let i = 1; i < words.length; i++) {
+      let word = words[i];
+      if (current.length + 1 + word.length <= width) {
+        current += ` ${word}`;
+      } else {
+        out.push(current);
+        current = `${indent}${"".padStart(leading.length)}${word}`;
+      }
+    }
+    out.push(current);
+  }
+
+  return out;
+}
+
+function truncateLines(lines, width) {
+  let out = [];
+
+  for (let line of lines) {
+    if (line.length <= width)
+      out.push(line);
+    else
+      out.push(line.slice(width - 1) + "…");
+  }
+
+  return out;
+}
+
+function padLines(lines, padding, marker = "") {
+  if (lines.length === 0)
+    return [];
+
+  let out = [ marker.padEnd(padding) + lines[0] ];
+
+  for (let i = 1; i < lines.length; i++)
+    out.push("".padEnd(padding) + lines[i]);
+
+  return out;
+}
+
+function printWrapped(marker, text, wrapper) {
+  let lines = String(text).split("\n");
+  let wrapped = wrapper(lines, (process.stdout.columns ?? 80) - 2 * padding);
+  let padded = padLines(wrapped, padding, marker);
+
+  console.log(padded.join("\n"));
+  return padded.length;
+}
+
+export function info(marker, text) {
+  if (newline)
     console.log();
 
-  let ellipsis = "…";
-  let newline = text.indexOf("\n");
-  if (newline > 0 && newline < width)
-    text = text.slice(0, newline);
-  else if (text.length > width)
-    text = text.slice(0, width);
-  else
-    ellipsis = "";
-
-  console.log(`${marker.padEnd(margin)}${text}${ellipsis}`)
-
-  last = "oneline";
+  let n = printWrapped(marker, text, wrapLines);
+  newline = n > 1;
 }
 
-export function block(marker, text) {
-  let width = process.stdout.columns ?? 80;
-
+export function prose(marker, text) {
   console.log();
-  console.log(TextWrap.wrap(text, { marker, margin, width }));
-
-  last = "block";
+  printWrapped(marker, text, wrapProseLines);
+  newline = true;
 }
 
-export function textBlock(marker, text) {
-  let width = process.stdout.columns ?? 80;
-  let prefixPatterns = [ "#+\\s+", "\\s*[*\\-]\\s+", "\\s*\\d+\\.\\s+" ];
+export function error(marker, e) {
+  let lines = e.stack.split("\n");
+  let truncated = truncateLines(lines, (process.stdout.columns) - 2 * padding);
+  let padded = padLines(truncated, padding, marker);
 
-  console.log();
-  console.log(TextWrap.wrap(text, { marker, margin, width, prefixPatterns }));
+  if (newline)
+    console.log();
 
-  last = "block";
-}
-
-export function detail(text) {
-  let width = process.stdout.columns ?? 80;
-
-  console.log(TextWrap.wrap(text, { margin, width }));
-
-  last = "detail";
+  console.log(padded.join("\n"));
+  newline = padded.length > 1;
 }

@@ -60,7 +60,7 @@ export async function run(prompt, options) {
     for (let part of parts) {
       input.contents.push({ role: "model", parts: [ part ] });
       if (part.text !== undefined) {
-        Log.textBlock("⏵", part.text);
+        Log.prose("⏵", part.text);
       } else if (part.functionCall !== undefined) {
         toolCalls += 1;
         input.contents.push({

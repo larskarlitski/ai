@@ -24,7 +24,7 @@ async function listOneRemoteRef(repository, remote, ref) {
 export async function setupWorkspace(repository, directory) {
   let workspace = await fs.mkdtemp(directory + "/");
 
-  Log.oneline("↱", `Setting up workspace in ${workspace}`);
+  Log.info("↱", `Setting up workspace in ${workspace}`);
   await git("clone", "--no-hardlinks", "--single-branch", repository, workspace);
 
   return workspace;
@@ -47,10 +47,10 @@ export async function teardownWorkspace(workspace, options = {}) {
     }
 
     if (changed) {
-      Log.oneline("↳", `Import agent changes to ${branch}`);
+      Log.info("↳", `Import agent changes to ${branch}`);
       await git("-C", workspace, "push", "origin", `HEAD:refs/heads/${branch}`);
     } else {
-      Log.oneline("↳", "Agent made no changes");
+      Log.info("↳", "Agent made no changes");
     }
   }
 

@@ -55,7 +55,7 @@ export async function run(prompt, options) {
         case "message":
           for (let item of output.content ?? []) {
             if (item.type === "output_text")
-              Log.textBlock("⏵", item.text);
+              Log.prose("⏵", item.text);
             else
               throw new Error(`Unknown message type: ${item.type}`);
           }
@@ -64,7 +64,7 @@ export async function run(prompt, options) {
         case "reasoning":
           // it's usually empty
           for (let summary of output.summary)
-            Log.textBlock("⏵", summary);
+            Log.prose("⏵", summary);
           break;
 
         case "function_call":

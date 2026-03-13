@@ -16,14 +16,7 @@ function create(name, args, workspace) {
 }
 
 export async function call(name, args, workspace) {
-  try {
-    let tool = create(name, args, workspace);
-
-    Log.oneline(tool.symbol, tool.toString());
-
-    return await tool.call();;
-  } catch (error) {
-    Log.detail(String(error));
-    return { error: String(error) };
-  }
+  let tool = create(name, args, workspace);
+  Log.info(tool.symbol, tool.toString());
+  return await tool.call();
 }

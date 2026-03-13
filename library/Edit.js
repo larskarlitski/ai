@@ -41,13 +41,7 @@ export default class Edit {
   #workspace;
 
   constructor(args, workspace) {
-    if (typeof args !== "object" || args === null ||
-        typeof args.path !== "string" ||
-        (args.find !== undefined && typeof args.find !== "string") ||
-        typeof args.replacement !== "string")
-      throw new TypeError("Invalid arguments");
-
-    this.#args = args;
+    this.#args = args ?? {};
     this.#workspace = workspace;
   }
 
@@ -62,11 +56,17 @@ export default class Edit {
 
   async call() {
     if (this.#workspace === undefined)
-      throw new Error("Not allowed to edit files");
+      return { error: "Not allowed to edit files" };
+    if (typeof this.#args.path !== "string")
+      return { error: "Invalid argument: path must be a string" };
+    if (this.#args.find !== undefined && typeof this.#args.find !== "string")
+      return { error: "Invalid argument: find must be a string" };
+    if (typeof this.#args.replacement !== "string")
+      return { error: "Invalid argument: replacement must be a string" };
 
     let filepath = path.resolve(this.#workspace, this.#args.path);
     if (!filepath.startsWith(this.#workspace + "/"))
-      throw new Error(`${filepath} is not below the current directory`);
+      return { error: `${filepath} is not below the current directory` };
 
     await fs.mkdir(path.dirname(filepath), { recursive: true });
 
@@ -77,7 +77,7 @@ export default class Edit {
       let string = await fs.readFile(filepath, { encoding: "utf-8" });
       let start = string.indexOf(this.#args.find);
       if (start < 0)
-        throw new Error("String not found");
+        return { error: "String not found" };
       let end = start + this.#args.find.length;
       content = string.slice(0, start) + this.#args.replacement + string.slice(end);
     }
@@ -85,5 +85,7 @@ export default class Edit {
     let temp = `${filepath}-${randomHexString(8)}`;
     await fs.writeFile(temp, content, { encoding: "utf-8" });
     await fs.rename(temp, filepath);
+
+    return {};
   }
 }
