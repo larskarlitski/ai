@@ -64,11 +64,13 @@ export default class Edit {
     if (this.#workspace === undefined)
       throw new Error("Not allowed to edit files");
 
-    let content;
     let filepath = path.resolve(this.#workspace, this.#args.path);
     if (!filepath.startsWith(this.#workspace + "/"))
-      throw new Error("Path must be below the current directory");
+      throw new Error(`${filepath} is not below the current directory`);
 
+    await fs.mkdir(path.dirname(filepath), { recursive: true });
+
+    let content;
     if (this.#args.find === undefined) {
       content = this.#args.replacement;
     } else {
