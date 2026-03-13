@@ -1,8 +1,10 @@
 import child_process from "node:child_process";
 import os from "node:os";
 import path from "node:path";
+import process from "node:process";
 
-function bwrap(argv, cwd = process.cwd()) {
+function bwrap(argv, cwd, readOnly) {
+  let bind = readOnly ? "--ro-bind" : "--bind";
   let name = path.basename(cwd);
 
   return [
@@ -11,15 +13,20 @@ function bwrap(argv, cwd = process.cwd()) {
     "--dev", "/dev",
     "--proc", "/proc",
     "--ro-bind", "/usr", "/usr",
-    "--ro-bind", "/lib", "/lib",
-    "--ro-bind", "/bin", "/bin",
-    "--bind", cwd, `/${name}`,
+    "--symlink", "usr/lib", "/lib",
+    "--symlink", "usr/lib64", "/lib64",
+    "--symlink", "usr/bin", "/bin",
+    "--symlink", "usr/sbin", "/sbin",
+    "--tmpfs", "/tmp",
+    bind, cwd, `/${name}`,
     "--chdir", `/${name}`,
+    "--",
     ...argv
   ];
 }
 
-function sandboxExec(argv, cwd = process.cwd()) {
+function sandboxExec(argv, cwd, readOnly) {
+  let allow = readOnly ? "file-read*" : "file-read* file-write*";
   let profile = `(version 1)
 (deny default)
 (allow process*)
@@ -38,7 +45,7 @@ function sandboxExec(argv, cwd = process.cwd()) {
   (subpath "/Applications/Xcode.app")
   (subpath "/Applications/Xcode-beta.app")
   (subpath "${os.homedir()}/Library"))
-(allow file-read* file-write*
+(allow ${allow}
   (subpath "${cwd}"))
 `;
 
@@ -51,7 +58,10 @@ function sandboxExec(argv, cwd = process.cwd()) {
 
 export function execute(args, options = {}) {
   let { promise, resolve, reject } = Promise.withResolvers();
-  let cmd = process.platform === "darwin" ? sandboxExec(args, options.cwd) : bwrap(args, options.cwd);
+  let cmd = (process.platform === "darwin"
+    ? sandboxExec(args, options.cwd, options.readOnly)
+    : bwrap(args, options.cwd, options.readOnly)
+  );
 
   let child = child_process.execFile(cmd[0], cmd.slice(1), (error, stdout, stderr) => {
     let code = 0;

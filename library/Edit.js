@@ -49,7 +49,7 @@ export default class Edit {
       throw new TypeError("Invalid arguments");
 
     this.#args = args;
-    this.#workspace = workspace ?? process.cwd();
+    this.#workspace = workspace;
   }
 
   toString() {
@@ -61,6 +61,9 @@ export default class Edit {
   }
 
   async call() {
+    if (this.#workspace === undefined)
+      throw new Error("Not allowed to edit files");
+
     let content;
     let filepath = path.resolve(this.#workspace, this.#args.path);
     if (!filepath.startsWith(this.#workspace + "/"))

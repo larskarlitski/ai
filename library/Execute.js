@@ -25,6 +25,7 @@ export default class Execute {
 
   #args;
   #workspace;
+  #readOnly;
 
   constructor(args, workspace) {
     if (typeof args !== "object" || args === null ||
@@ -33,7 +34,14 @@ export default class Execute {
       throw new TypeError("Invalid arguments");
 
     this.#args = args;
-    this.#workspace = workspace;
+
+    if (workspace !== undefined) {
+      this.#workspace = workspace;
+      this.#readOnly = false;
+    } else {
+      this.#workspace = process.cwd();
+      this.#readOnly = true;
+    }
   }
 
   toString() {
@@ -52,7 +60,7 @@ export default class Execute {
   async call() {
     let { code, stdout } = await Sandbox.execute(
       [ "bash", "-c", "exec 2>&1\n" + this.#args.command ],
-      { cwd: this.#workspace, stdin: this.#args.stdin }
+      { cwd: this.#workspace, readOnly: this.#readOnly, stdin: this.#args.stdin }
     );
     if (code === 0)
       return stdout.trim();
