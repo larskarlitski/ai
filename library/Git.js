@@ -42,7 +42,7 @@ export async function teardownWorkspace(workspace, options = {}) {
       changed = true;
     } else {
       let head = await git("-C", workspace, "rev-parse", "HEAD");
-      let remoteHead = listOneRemoteRef(workspace, "origin", "HEAD");
+      let remoteHead = await listOneRemoteRef(workspace, "origin", "HEAD");
       changed = head !== remoteHead;
     }
 
