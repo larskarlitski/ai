@@ -10,10 +10,16 @@ export function oneline(marker, text) {
   if (last === "detail" || last === "block")
     console.log();
 
-  if (text.length > width)
-    text = text.slice(0, width - 3) + "[…]";
+  let ellipsis = "…";
+  let newline = text.indexOf("\n");
+  if (newline > 0 && newline < width)
+    text = text.slice(0, newline);
+  else if (text.length > width)
+    text = text.slice(0, width);
+  else
+    ellipsis = "";
 
-  console.log(`${marker.padEnd(margin)}${text}`)
+  console.log(`${marker.padEnd(margin)}${text}${ellipsis}`)
 
   last = "oneline";
 }
