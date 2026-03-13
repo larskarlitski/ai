@@ -22,13 +22,9 @@ export async function call(name, args, workspace) {
 
     Log.oneline(tool.symbol, tool.toString());
 
-    let output = await tool.call();
-    if (output !== undefined)
-      Log.detail(output);
-
-    return output;
+    return await tool.call();;
   } catch (error) {
-    Log.detail(`${error}\n${JSON.stringify(args, 0, 2)}`);
-    return typeof error.toJSON === "function" ? error : { error: String(error) };
+    Log.detail(String(error));
+    return { error: String(error) };
   }
 }
