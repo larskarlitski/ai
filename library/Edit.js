@@ -52,7 +52,8 @@ export default class Edit {
   }
 
   toString() {
-    return this.#args.path;
+    let op = this.#args.find ? "Edit" : "Create";
+    return `${op} ${this.#args.path}`;
   }
 
   get symbol() {
