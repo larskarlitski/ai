@@ -1,4 +1,5 @@
 import * as Secret from "./Secret.js";
+import * as Tools from "./Tools.js";
 
 const baseURL = "https://generativelanguage.googleapis.com/";
 
@@ -12,7 +13,7 @@ async function call(input, options) {
     body: JSON.stringify({
       ...input,
       generationConfig: { candidateCount: 1 },
-      tools: [ { functionDeclarations: options.tools } ],
+      tools: [ { functionDeclarations: Tools.schemas } ],
       toolConfig: { functionCallingConfig: { mode: "AUTO" } }
     })
   });
@@ -68,7 +69,7 @@ export async function run(prompt, options) {
               name: part.functionCall.name,
               response: {
                 result: JSON.stringify(
-                  await options.callTool(part.functionCall.name, part.functionCall.args)
+                  await Tools.call(part.functionCall.name, part.functionCall.args)
                 )
               }
             }

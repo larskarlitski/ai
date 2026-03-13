@@ -1,17 +1,13 @@
 import * as Secret from "./Secret.js";
+import * as Tools from "./Tools.js";
 
 const baseURL = "https://api.anthropic.com/";
 
-async function call(input, options) {
-  let tools = [];
-  for (let tool of options.tools) {
-    tools.push({
-      name: tool.name,
-      description: tool.description,
-      input_schema: tool.parameters
-    });
-  }
+function toolFromSchema(s) {
+  return { name: s.name, description: s.description, input_schema: s.parameters };
+}
 
+async function call(input, options) {
   let url = new URL("v1/messages", options.baseURL ?? baseURL);
   let response = await fetch(url, {
     method: "POST",
@@ -23,7 +19,7 @@ async function call(input, options) {
     },
     body: JSON.stringify({
       model: options.model,
-      tools,
+      tools: Tools.schemas.map(toolFromSchema),
       ...input,
       cache_control: { type: "ephemeral" },
       max_tokens: 4096
@@ -72,7 +68,7 @@ export async function run(prompt, options) {
               type: "tool_result",
               tool_use_id: block.id,
               content: JSON.stringify(
-                await options.callTool(block.name, block.input)
+                await Tools.call(block.name, block.input)
               )
             }]
           });

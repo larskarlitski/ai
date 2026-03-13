@@ -1,12 +1,9 @@
 import * as Secret from "./Secret.js";
+import * as Tools from "./Tools.js";
 
 const baseURL = "https://api.openai.com/";
 
 async function call(previousResponseId, input, options) {
-  let tools = [];
-  for (let tool of options.tools)
-    tools.push({ type: "function", ...tool });
-
   let url = new URL("v1/responses", options.baseURL ?? baseURL);
   let response = await fetch(url, {
     method: "POST",
@@ -17,7 +14,7 @@ async function call(previousResponseId, input, options) {
     body: JSON.stringify({
       model: options.model,
       previous_response_id: previousResponseId,
-      tools,
+      tools: Tools.schemas.map(s => ({ type: "function", ...s })),
       input
     })
   });
@@ -74,7 +71,7 @@ export async function run(prompt, options) {
             type: "function_call_output",
             call_id: output.call_id,
             output: JSON.stringify(
-              await options.callTool(output.name, JSON.parse(output.arguments))
+              await Tools.call(output.name, JSON.parse(output.arguments))
             ) ?? ""
           });
           break;
