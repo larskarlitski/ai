@@ -24,14 +24,16 @@ export default class Execute {
   }
 
   #args;
+  #workspace;
 
-  constructor(args) {
+  constructor(args, workspace) {
     if (typeof args !== "object" || args === null ||
         typeof args.command !== "string" ||
         (args.stdin !== undefined && typeof args.stdin !== "string"))
       throw new TypeError("Invalid arguments");
 
     this.#args = args;
+    this.#workspace = workspace;
   }
 
   toString() {
@@ -50,7 +52,7 @@ export default class Execute {
   async call() {
     let { code, stdout } = await Sandbox.execute(
       [ "bash", "-c", "exec 2>&1\n" + this.#args.command ],
-      { stdin: this.#args.stdin }
+      { cwd: this.#workspace, stdin: this.#args.stdin }
     );
     if (code === 0)
       return stdout.trim();

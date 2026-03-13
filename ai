@@ -1,11 +1,24 @@
 #!/usr/bin/env node
 
+import * as Git from "./library/Git.js";
 import * as Log from "./library/Log.js";
 import * as streamconsumers from "node:stream/consumers";
 import Agent from "./library/Agent.js";
 import fs from "node:fs/promises";
+import os from "node:os";
 import process from "node:process";
 import util from "node:util";
+
+async function workspaceDirectory() {
+  let state = process.env.XDG_STATE_HOME;
+  if (state === undefined)
+    state = `${os.homedir()}/.local/state`;
+
+  let workspaces = `${state}/ai/workspaces`;
+  await fs.mkdir(workspaces, { recursive: true });
+
+  return workspaces;
+}
 
 function readFiles(paths) {
   return Promise.all(paths.map(path => fs.readFile(path, "utf8")));
@@ -18,7 +31,8 @@ async function main() {
       system: { type: "string", multiple: true },
       file: { type: "string", multiple: true },
       "system-file": { type: "string", multiple: true },
-      "base-url": { type: "string" }
+      "base-url": { type: "string" },
+      "workspace": { type: "string" }
     },
     allowPositionals: true
   });
@@ -44,8 +58,19 @@ async function main() {
   if (!process.stdin.isTTY)
     prompt.user.push(await streamconsumers.text(process.stdin));
 
-  let { tokens } = await agent.run(prompt);
-  Log.oneline("■", `${tokens} tokens`);
+  let workspace;
+  if (options.workspace === "git") {
+    let repository = await Git.topLevel(process.cwd());
+    workspace = await Git.setupWorkspace(repository, await workspaceDirectory());
+  }
+
+  try {
+    let { tokens } = await agent.run(prompt, workspace);
+    Log.oneline("■", `${tokens} tokens`);
+  } finally {
+    if (workspace !== undefined)
+      await Git.teardownWorkspace(workspace, { pushChanges: true });
+  }
 }
 
 try {

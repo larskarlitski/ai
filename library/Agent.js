@@ -22,8 +22,9 @@ export default class Agent {
     this.#baseURL = options.baseURL;
   }
 
-  run(prompt) {
+  run(prompt, workspace) {
     return this.#provider.run(prompt, {
+      workspace,
       model: this.#model,
       baseURL: this.#baseURL
     });

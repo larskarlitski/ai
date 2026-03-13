@@ -1,4 +1,6 @@
 import fs from "node:fs/promises";
+import path from "node:path";
+import process from "node:process";
 
 const schema = Object.freeze({
   name: "edit",
@@ -37,8 +39,9 @@ export default class Edit {
   }
 
   #args;
+  #workspace;
 
-  constructor(args) {
+  constructor(args, workspace) {
     if (typeof args !== "object" || args === null ||
         typeof args.path !== "string" ||
         (args.find !== undefined && typeof args.find !== "string") ||
@@ -46,6 +49,7 @@ export default class Edit {
       throw new TypeError("Invalid arguments");
 
     this.#args = args;
+    this.#workspace = workspace ?? process.cwd();
   }
 
   toString() {
@@ -58,11 +62,14 @@ export default class Edit {
 
   async call() {
     let content;
+    let filepath = path.resolve(this.#workspace, this.#args.path);
+    if (!filepath.startsWith(this.#workspace + "/"))
+      throw new Error("Path must be below the current directory");
 
     if (this.#args.find === undefined) {
       content = this.#args.replacement;
     } else {
-      let string = await fs.readFile(this.#args.path, { encoding: "utf-8" });
+      let string = await fs.readFile(filepath, { encoding: "utf-8" });
       let start = string.indexOf(this.#args.find);
       if (start < 0)
         throw new Error("String not found");
@@ -70,8 +77,8 @@ export default class Edit {
       content = string.slice(0, start) + this.#args.replacement + string.slice(end);
     }
 
-    let temp = `${this.#args.path}-${randomHexString(8)}`;
+    let temp = `${filepath}-${randomHexString(8)}`;
     await fs.writeFile(temp, content, { encoding: "utf-8" });
-    await fs.rename(temp, this.#args.path);
+    await fs.rename(temp, filepath);
   }
 }

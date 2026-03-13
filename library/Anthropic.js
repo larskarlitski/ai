@@ -69,7 +69,7 @@ export async function run(prompt, options) {
               type: "tool_result",
               tool_use_id: block.id,
               content: JSON.stringify(
-                await Tools.call(block.name, block.input)
+                await Tools.call(block.name, block.input, options.workspace)
               )
             }]
           });

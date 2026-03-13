@@ -2,8 +2,7 @@ import child_process from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 
-function bwrap(argv) {
-  let cwd = process.cwd();
+function bwrap(argv, cwd = process.cwd()) {
   let name = path.basename(cwd);
 
   return [
@@ -20,8 +19,7 @@ function bwrap(argv) {
   ];
 }
 
-function sandboxExec(argv) {
-  let cwd = process.cwd();
+function sandboxExec(argv, cwd = process.cwd()) {
   let profile = `(version 1)
 (deny default)
 (allow process*)
@@ -53,7 +51,7 @@ function sandboxExec(argv) {
 
 export function execute(args, options = {}) {
   let { promise, resolve, reject } = Promise.withResolvers();
-  let cmd = process.platform === "darwin" ? sandboxExec(args) : bwrap(args);
+  let cmd = process.platform === "darwin" ? sandboxExec(args, options.cwd) : bwrap(args, options.cwd);
 
   let child = child_process.execFile(cmd[0], cmd.slice(1), (error, stdout, stderr) => {
     let code = 0;
