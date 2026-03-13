@@ -1,5 +1,3 @@
-import * as Log from "./Log.js";
-
 import * as Anthropic from "./Anthropic.js";
 import * as Gemini from "./Gemini.js";
 import * as OpenAI from "./OpenAI.js";
@@ -27,7 +25,6 @@ export default class Agent {
   run(prompt) {
     return this.#provider.run(prompt, {
       model: this.#model,
-      message: text => Log.textBlock("⏵", text),
       baseURL: this.#baseURL
     });
   }

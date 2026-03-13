@@ -1,3 +1,4 @@
+import * as Log from "./Log.js";
 import * as Secret from "./Secret.js";
 import * as Tools from "./Tools.js";
 
@@ -57,7 +58,7 @@ export async function run(prompt, options) {
       input.messages.push({ role: "assistant", content: [ block ] });
       switch (block.type) {
         case "text":
-          options.message(block.text.trim());
+          Log.textBlock("⏵", block.text.trim());
           break;
 
         case "tool_use":
