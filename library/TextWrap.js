@@ -13,7 +13,10 @@ export function wrap(text, options = {}) {
   for (let line of String(text).split("\n")) {
     let m = line.match(prefixRegExp);
     let leading = m !== null ? m[1] : "";
-    let words = line.substring(leading.length).split(/\s+/);
+    let rest = line.substring(leading.length);
+    let indent = rest.match(/^(\s*)/)[1];
+    leading += indent;
+    let words = rest.substring(indent.length).split(/\s+/);
 
     if (leading.length === 0 && words.length === 0) {
       lines.push("");
