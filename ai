@@ -9,6 +9,26 @@ import os from "node:os";
 import process from "node:process";
 import util from "node:util";
 
+const help = `ai [--model NAME] [--system PROMPT] [--system-file FILE]
+   [--file FILE] [--base-url URL] [--workspace TYPE] PROMPT...
+
+A minimal, non-interactive coding agent. Runs a single agent loop: passes all
+prompts and optionally stdin to the model, gives it sandboxed access to the
+current directory, and lets it run commands and edit files until it considers
+itself to be done. The model receives no further human input.
+
+Options:
+  --model NAME        Model to use (default: gpt-5.2-codex)
+  --system PROMPT     System prompt to pass to the model (can be repeated)
+  --file FILE         Read an additional prompt from FILE (can be repeated)
+  --system-file FILE  Read a system prompt from FILE (can be repeated)
+  --base-url URL      Override the provider's API base URL
+  --workspace TYPE    Create a writable workspace for the agent. Type must be "git".
+                      Changes are pulled back into a branch.
+
+  If stdin is not a terminal, its contents are appended to the user prompt.
+`;
+
 async function workspaceDirectory() {
   let state = process.env.XDG_STATE_HOME;
   if (state === undefined)
@@ -27,6 +47,7 @@ function readFiles(paths) {
 async function main() {
   let { values: options, positionals } = util.parseArgs({
     options: {
+      help: { type: "boolean" },
       model: { type: "string", default: "gpt-5.2-codex" },
       system: { type: "string", multiple: true },
       file: { type: "string", multiple: true },
@@ -36,6 +57,11 @@ async function main() {
     },
     allowPositionals: true
   });
+
+  if (options.help === true) {
+    console.log(help);
+    return;
+  }
 
   let agent = new Agent(options.model, {
     baseURL: options["base-url"]
