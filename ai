@@ -73,7 +73,7 @@ async function main() {
   };
 
   if (options.system !== undefined)
-    prompt.system.push(options.system);
+    prompt.system.push(...options.system);
 
   if (options["system-file"] !== undefined)
     prompt.system.push(...await readFiles(options["system-file"]));
