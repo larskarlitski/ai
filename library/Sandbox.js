@@ -17,7 +17,6 @@ function bwrap(argv, cwd, readOnly) {
     "--symlink", "usr/lib64", "/lib64",
     "--symlink", "usr/bin", "/bin",
     "--symlink", "usr/sbin", "/sbin",
-    "--tmpfs", "/tmp",
     bind, cwd, `/${name}`,
     "--chdir", `/${name}`,
     "--",
