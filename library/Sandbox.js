@@ -63,18 +63,23 @@ export function execute(args, options = {}) {
     : bwrap(args, options.cwd, options.readOnly)
   );
 
-  let child = child_process.execFile(cmd[0], cmd.slice(1), (error, stdout, stderr) => {
-    let code = 0;
-    if (error) {
-      if (typeof error.code !== "number") {
-        reject(error);
-        return;
+  let child = child_process.execFile(
+    cmd[0],
+    cmd.slice(1),
+    { cwd: options.cwd },
+    (error, stdout, stderr) => {
+      let code = 0;
+      if (error) {
+        if (typeof error.code !== "number") {
+          reject(error);
+          return;
+        }
+        code = error.code;
       }
-      code = error.code;
-    }
 
-    resolve({ code, stdout, stderr });
-  });
+      resolve({ code, stdout, stderr });
+    }
+  );
 
   child.stdin.end(options.stdin);
 
