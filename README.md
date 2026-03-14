@@ -14,7 +14,7 @@ human input.
       --file FILE         Read an additional prompt from FILE (can be repeated)
       --system-file FILE  Read a system prompt from FILE (can be repeated)
       --base-url URL      Override the provider's API base URL
-      --workspace TYPE    Create a writable workspace for the agent. Type must be "git".
+      -w, --workspace     Create a writable workspace for the agent using git.
                           Changes are pulled back into a branch.
 
       If stdin is not a terminal, its contents are appended to the user prompt.
@@ -25,9 +25,9 @@ All commands run in a sandbox, using [bubblewrap][] on Linux and `sandbox-exec`
 on macOS.
 
 By default, the sandbox gives the model read access to the current working
-directory. With `--workspace=git`, that directory is cloned into a temporary
-workspace. The agent can make changes there, which are pulled back into the main
-repository (as branch `ai/{workspace-id}`) after it is done.
+directory. If that directory is a git repository, pass `--workspace` to clone it
+into a temporary, writable workspace. Any changes the agent makes are pulled
+back into the main repository (as branch `ai/{workspace-id}`).
 
 [bubblewrap]: https://github.com/containers/bubblewrap
 

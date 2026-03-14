@@ -23,7 +23,7 @@ Options:
   --file FILE         Read an additional prompt from FILE (can be repeated)
   --system-file FILE  Read a system prompt from FILE (can be repeated)
   --base-url URL      Override the provider's API base URL
-  --workspace TYPE    Create a writable workspace for the agent. Type must be "git".
+  -w, --workspace     Create a writable workspace for the agent using git.
                       Changes are pulled back into a branch.
 
   If stdin is not a terminal, its contents are appended to the user prompt.
@@ -54,7 +54,7 @@ async function main() {
       file: { type: "string", multiple: true },
       "system-file": { type: "string", multiple: true },
       "base-url": { type: "string" },
-      "workspace": { type: "string" }
+      "workspace": { type: "boolean", short: "w" }
     },
     allowPositionals: true
   });
@@ -88,7 +88,7 @@ async function main() {
     prompt.user.push(await streamconsumers.text(process.stdin));
 
   let workspace;
-  if (options.workspace === "git") {
+  if (options.workspace) {
     let repository = await Git.topLevel(process.cwd());
     workspace = await Git.setupWorkspace(repository, await workspaceDirectory());
   }
