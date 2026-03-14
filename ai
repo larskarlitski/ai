@@ -17,14 +17,14 @@ current directory, and lets it run commands and edit files until it considers
 itself to be done. The model receives no further human input.
 
 Options:
-  --transcript FILE   Save detailed transcript to FILE
-  --model NAME        Model to use (default: gpt-5.2-codex)
-  --system PROMPT     System prompt to pass to the model (can be repeated)
-  --file FILE         Read an additional prompt from FILE (can be repeated)
-  --system-file FILE  Read a system prompt from FILE (can be repeated)
-  --base-url URL      Override the provider's API base URL
-  -w, --workspace     Create a writable workspace for the agent using git.
-                      Changes are pulled back into a branch.
+      --transcript FILE   Save detailed transcript to FILE
+  -m, --model NAME        Model to use (default: gpt-5.2-codex)
+      --system PROMPT     System prompt to pass to the model (can be repeated)
+  -f, --file FILE         Read an additional prompt from FILE (can be repeated)
+      --system-file FILE  Read a system prompt from FILE (can be repeated)
+      --base-url URL      Override the provider's API base URL
+  -w, --workspace         Create a writable workspace for the agent using git.
+                          Changes are pulled back into a branch.
 
   If stdin is not a terminal, its contents are appended to the user prompt.
 `;
@@ -47,11 +47,11 @@ function readFiles(paths) {
 async function main() {
   let { values: options, positionals } = util.parseArgs({
     options: {
-      help: { type: "boolean" },
+      help: { type: "boolean", short: "h" },
       transcript: { type: "string" },
-      model: { type: "string", default: "gpt-5.2-codex" },
+      model: { type: "string", short: "m", default: "gpt-5.2-codex" },
       system: { type: "string", multiple: true },
-      file: { type: "string", multiple: true },
+      file: { type: "string", short: "f", multiple: true },
       "system-file": { type: "string", multiple: true },
       "base-url": { type: "string" },
       "workspace": { type: "boolean", short: "w" }

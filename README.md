@@ -8,14 +8,14 @@ human input.
     ai [OPTIONS] PROMPT...
 
     Options:
-      --transcript FILE   Save detailed transcript to FILE
-      --model NAME        Model to use (default: gpt-5.2-codex)
-      --system PROMPT     System prompt to pass to the model (can be repeated)
-      --file FILE         Read an additional prompt from FILE (can be repeated)
-      --system-file FILE  Read a system prompt from FILE (can be repeated)
-      --base-url URL      Override the provider's API base URL
-      -w, --workspace     Create a writable workspace for the agent using git.
-                          Changes are pulled back into a branch.
+          --transcript FILE   Save detailed transcript to FILE
+      -m, --model NAME        Model to use (default: gpt-5.2-codex)
+          --system PROMPT     System prompt to pass to the model (can be repeated)
+      -f, --file FILE         Read an additional prompt from FILE (can be repeated)
+          --system-file FILE  Read a system prompt from FILE (can be repeated)
+          --base-url URL      Override the provider's API base URL
+      -w, --workspace         Create a writable workspace for the agent using git.
+                              Changes are pulled back into a branch.
 
       If stdin is not a terminal, its contents are appended to the user prompt.
 
