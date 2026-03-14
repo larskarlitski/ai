@@ -72,7 +72,7 @@ export async function run(prompt, options) {
             type: "function_call_output",
             call_id: output.call_id,
             output: JSON.stringify(
-              await Tools.call(output.name, JSON.parse(output.arguments))
+              await Tools.call(output.name, JSON.parse(output.arguments), options.workspace)
             ) ?? ""
           });
           break;

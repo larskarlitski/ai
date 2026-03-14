@@ -70,7 +70,7 @@ export async function run(prompt, options) {
               name: part.functionCall.name,
               response: {
                 result: JSON.stringify(
-                  await Tools.call(part.functionCall.name, part.functionCall.args)
+                  await Tools.call(part.functionCall.name, part.functionCall.args, options.workspace)
                 )
               }
             }
