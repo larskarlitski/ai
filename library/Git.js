@@ -21,8 +21,16 @@ async function listOneRemoteRef(repository, remote, ref) {
   return head;
 }
 
+function randomHexString(n) {
+  return Array.from(
+    crypto.getRandomValues(new Uint8Array(n)),
+    b => b.toString(16).padStart(2, "0")
+  ).join("");
+}
+
 export async function setupWorkspace(repository, directory) {
-  let workspace = await fs.mkdtemp(directory + "/");
+  let workspace = path.join(directory, randomHexString(16));
+  await fs.mkdir(workspace);
 
   Log.info("↱", `Setting up workspace in ${workspace}`);
   await git("clone", "--no-hardlinks", "--single-branch", repository, workspace);
