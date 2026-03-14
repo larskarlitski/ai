@@ -1,26 +1,8 @@
-function wrapLines(lines, width) {
-  let out = [];
-  for (let line of lines) {
-    let words = line.trim().split(/\s+/);
-
-    let current = words[0];
-    for (let i = 1; i < words.length; i++) {
-      let word = words[i];
-      if (current.length + 1 + word.length <= width) {
-        current += ` ${word}`;
-      } else {
-        out.push(current);
-        current = word;
-      }
-    }
-    out.push(current);
-  }
-
-  return out;
-}
-
-function wrapProseLines(lines, width) {
-  let pattern = /^(\s*)((?:#+|[-*]|\d+\.) )?(.*)$/
+function wrapLines(lines, width, prose = false) {
+  let pattern = (prose
+    ? /^(\s*)((?:#+|[-*]|\d+\.) )?(.*)$/
+    : /^(\s*)()(.*)$/
+  );
 
   let out = [];
   for (let line of lines) {
@@ -98,13 +80,13 @@ export default class TextLogger {
     if (this.#newline)
       this.#out.write("\n");
 
-    let n = this.#printWrapped(marker, text, wrapLines);
+    let n = this.#printWrapped(marker, text);
     this.#newline = n > 1;
   }
 
   prose(marker, text) {
     this.#out.write("\n");
-    this.#printWrapped(marker, text, wrapProseLines);
+    this.#printWrapped(marker, text, true);
     this.#newline = true;
   }
 
@@ -119,9 +101,9 @@ export default class TextLogger {
     this.#newline = true;
   }
 
-  #printWrapped(marker, text, wrapper) {
+  #printWrapped(marker, text, prose = false) {
     let lines = String(text).split("\n");
-    let wrapped = wrapper(lines, this.#width() - 2 * this.#padding);
+    let wrapped = wrapLines(lines, this.#width() - 2 * this.#padding, prose);
     let padded = padLines(wrapped, this.#padding, marker);
 
     this.#out.write(padded.join("\n") + "\n");
