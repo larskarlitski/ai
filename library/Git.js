@@ -2,7 +2,6 @@ import child_process from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import util from "node:util";
-import * as Log from "./Log.js";
 
 let execFile = util.promisify(child_process.execFile);
 
@@ -21,46 +20,35 @@ async function listOneRemoteRef(repository, remote, ref) {
   return head;
 }
 
-function randomHexString(n) {
-  return Array.from(
-    crypto.getRandomValues(new Uint8Array(n)),
-    b => b.toString(16).padStart(2, "0")
-  ).join("");
-}
-
 export async function setupWorkspace(repository, directory) {
-  let workspace = path.join(directory, randomHexString(16));
-  await fs.mkdir(workspace);
-
-  Log.info("↱", `Setting up workspace in ${workspace}`);
-  await git("clone", "--no-hardlinks", "--single-branch", repository, workspace);
-
-  return workspace;
+  await fs.mkdir(directory, { recursive: true });
+  await git("clone", "--no-hardlinks", "--single-branch", repository, directory);
 }
 
-export async function teardownWorkspace(workspace, options = {}) {
+export async function teardownWorkspace(directory, options = {}) {
+  let branch;
+
   if (options.pushChanges) {
-    let branch = `ai/${path.basename(workspace)}`;
     let changed = false;
 
-    let status = await git("-C", workspace, "status", "--porcelain");
+    let status = await git("-C", directory, "status", "--porcelain");
     if (status.length > 0) {
-      await git("-C", workspace, "add", "-A");
-      await git("-C", workspace, "commit", "-m", "Agent changes");
+      await git("-C", directory, "add", "-A");
+      await git("-C", directory, "commit", "-m", "Agent changes");
       changed = true;
     } else {
-      let head = await git("-C", workspace, "rev-parse", "HEAD");
-      let remoteHead = await listOneRemoteRef(workspace, "origin", "HEAD");
+      let head = await git("-C", directory, "rev-parse", "HEAD");
+      let remoteHead = await listOneRemoteRef(directory, "origin", "HEAD");
       changed = head !== remoteHead;
     }
 
     if (changed) {
-      Log.info("↳", `Import agent changes to ${branch}`);
-      await git("-C", workspace, "push", "origin", `HEAD:refs/heads/${branch}`);
-    } else {
-      Log.info("↳", "Agent made no changes");
+      branch = `ai/${path.basename(directory)}`;
+      await git("-C", directory, "push", "origin", `HEAD:refs/heads/${branch}`);
     }
   }
 
-  await fs.rm(workspace, { recursive: true, force: true });
+  await fs.rm(directory, { recursive: true, force: true });
+
+  return branch;
 }

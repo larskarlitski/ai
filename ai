@@ -34,14 +34,18 @@ async function workspaceDirectory() {
   if (state === undefined)
     state = `${os.homedir()}/.local/state`;
 
-  let workspaces = `${state}/ai/workspaces`;
-  await fs.mkdir(workspaces, { recursive: true });
-
-  return workspaces;
+  return `${state}/ai/workspaces`;
 }
 
 function readFiles(paths) {
   return Promise.all(paths.map(path => fs.readFile(path, "utf8")));
+}
+
+function randomHexString(n) {
+  return Array.from(
+    crypto.getRandomValues(new Uint8Array(n)),
+    b => b.toString(16).padStart(2, "0")
+  ).join("");
 }
 
 async function main() {
@@ -87,22 +91,30 @@ async function main() {
   if (!process.stdin.isTTY)
     prompt.user.push(await streamconsumers.text(process.stdin));
 
+  let session = randomHexString(16);
+  Log.info("●", `Session ${session}: ${options.model}, ` +
+    (options.workspace ? "writable in temporary workspace" : "read-only")
+  );
+
   let workspace;
   if (options.workspace) {
     let repository = await Git.topLevel(process.cwd());
-    workspace = await Git.setupWorkspace(repository, await workspaceDirectory());
+    workspace = `${await workspaceDirectory()}/${session}`;
+    await Git.setupWorkspace(repository, workspace);
   }
 
+  let infos = [];
   try {
     let { tokens } = await agent.run(prompt, workspace);
-
-    let message = `${tokens} tokens`;
-    if (options.transcript)
-      message += `; transcript saved to ${options.transcript}`;
-    Log.info("■", message);
+    infos.push(`${tokens} tokens`);
   } finally {
-    if (workspace !== undefined)
-      await Git.teardownWorkspace(workspace, { pushChanges: true });
+    if (workspace !== undefined) {
+      let branch = await Git.teardownWorkspace(workspace, { pushChanges: true });
+      infos.push(branch !== undefined ? `agent's changes in ${branch}` : "agent made no changes");
+    }
+
+    if (infos.length > 0)
+      Log.info("■", "Done: " + infos.join(", "));
 
     await Log.close();
   }
