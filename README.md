@@ -5,10 +5,10 @@ gives it sandboxed access to the current directory, and lets it run commands and
 edit files until it considers itself to be done. The model receives no further
 human input.
 
-    ai [--model NAME] [--system PROMPT] [--system-file FILE]
-       [--file FILE] [--base-url URL] [--workspace TYPE] PROMPT...
+    ai [OPTIONS] PROMPT...
 
     Options:
+      --transcript FILE   Save detailed transcript to FILE
       --model NAME        Model to use (default: gpt-5.2-codex)
       --system PROMPT     System prompt to pass to the model (can be repeated)
       --file FILE         Read an additional prompt from FILE (can be repeated)

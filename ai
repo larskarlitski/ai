@@ -9,8 +9,7 @@ import os from "node:os";
 import process from "node:process";
 import util from "node:util";
 
-const help = `ai [--model NAME] [--system PROMPT] [--system-file FILE]
-   [--file FILE] [--base-url URL] [--workspace TYPE] PROMPT...
+const help = `ai [OPTIONS] PROMPT...
 
 A minimal, non-interactive coding agent. Runs a single agent loop: passes all
 prompts and optionally stdin to the model, gives it sandboxed access to the
@@ -18,6 +17,7 @@ current directory, and lets it run commands and edit files until it considers
 itself to be done. The model receives no further human input.
 
 Options:
+  --transcript FILE   Save detailed transcript to FILE
   --model NAME        Model to use (default: gpt-5.2-codex)
   --system PROMPT     System prompt to pass to the model (can be repeated)
   --file FILE         Read an additional prompt from FILE (can be repeated)
@@ -48,6 +48,7 @@ async function main() {
   let { values: options, positionals } = util.parseArgs({
     options: {
       help: { type: "boolean" },
+      transcript: { type: "string" },
       model: { type: "string", default: "gpt-5.2-codex" },
       system: { type: "string", multiple: true },
       file: { type: "string", multiple: true },
@@ -62,6 +63,8 @@ async function main() {
     console.log(help);
     return;
   }
+
+  await Log.setup(options.transcript);
 
   let agent = new Agent(options.model, {
     baseURL: options["base-url"]
@@ -92,15 +95,17 @@ async function main() {
 
   try {
     let { tokens } = await agent.run(prompt, workspace);
-    Log.info("■", `${tokens} tokens`);
+
+    let message = `${tokens} tokens`;
+    if (options.transcript)
+      message += `; transcript saved to ${options.transcript}`;
+    Log.info("■", message);
   } finally {
     if (workspace !== undefined)
       await Git.teardownWorkspace(workspace, { pushChanges: true });
+
+    await Log.close();
   }
 }
 
-try {
-  await main();
-} catch (error) {
-  Log.error("✘", error);
-}
+await main();

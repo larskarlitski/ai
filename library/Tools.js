@@ -18,5 +18,12 @@ function create(name, args, workspace) {
 export async function call(name, args, workspace) {
   let tool = create(name, args, workspace);
   Log.info(tool.symbol, tool.toString());
-  return await tool.call();
+
+  let r = await tool.call();
+  if (r.output !== undefined)
+    Log.detail(r.output);
+  if (r.error !== undefined)
+    Log.detail(`Tool failed: ${r.error}`);
+
+  return r;
 }

@@ -28,8 +28,13 @@ function wrapProseLines(lines, width) {
     let indent = m[1];
     let leading = m[2] ?? "";
     let words = m[3].trim().split(/\s+/);
-    let current = `${indent}${leading}${words[0]}`;
 
+    if (words.length === 1 && words[0] === "") {
+      out.push("");
+      continue;
+    }
+
+    let current = `${indent}${leading}${words[0]}`;
     for (let i = 1; i < words.length; i++) {
       let word = words[i];
       if (current.length + 1 + word.length <= width) {
@@ -71,15 +76,17 @@ function padLines(lines, padding, marker = "") {
   return out;
 }
 
-export default class {
+export default class TextLogger {
   #out;
   #width;
   #padding;
+  #withDetails;
   #newline = false;
 
   constructor(out, options = {}) {
     this.#out = out;
     this.#padding = options.padding ?? 2;
+    this.#withDetails = options.withDetails ?? false;
 
     if (typeof options.width === "function")
       this.#width = options.width;
@@ -101,20 +108,15 @@ export default class {
     this.#newline = true;
   }
 
-  error(marker, e) {
-    let lines = e.stack.split("\n");
-    let truncated = truncateLines(lines, this.#width() - 2 * this.#padding);
-    let padded = padLines(truncated, this.#padding, marker);
-
-    if (this.#newline)
-      this.#out.write("\n");
-
-    this.#out.write(padded.join("\n") + "\n");
-    this.#newline = padded.length > 1;
-  }
-
   detail(text) {
-    // Don't print details on the terminal
+    if (!this.#withDetails)
+      return;
+
+    let lines = text.split("\n");
+    let truncated = truncateLines(lines, this.#width() - 2 * this.#padding);
+    let padded = padLines(truncated, this.#padding);
+    this.#out.write(padded.join("\n") + "\n");
+    this.#newline = true;
   }
 
   #printWrapped(marker, text, wrapper) {
