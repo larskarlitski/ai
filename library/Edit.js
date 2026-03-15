@@ -70,6 +70,11 @@ export default class Edit {
 
     await fs.mkdir(path.dirname(filepath), { recursive: true });
 
+    let stat;
+    try {
+      stat = await fs.stat(filepath);
+    } catch (e) {}
+
     let content;
     if (this.#args.find === undefined) {
       content = this.#args.replacement;
@@ -83,7 +88,7 @@ export default class Edit {
     }
 
     let temp = `${filepath}-${randomHexString(8)}`;
-    await fs.writeFile(temp, content, { encoding: "utf-8" });
+    await fs.writeFile(temp, content, { encoding: "utf-8", mode: stat?.mode });
     await fs.rename(temp, filepath);
 
     return {};
