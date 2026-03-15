@@ -42,8 +42,8 @@ function randomHexString(n) {
   ).join("");
 }
 
-async function main() {
-  let { values: options, positionals } = util.parseArgs({
+function parseArguments() {
+  let { values, positionals } = util.parseArgs({
     options: {
       help: { type: "boolean", short: "h" },
       transcript: { type: "string" },
@@ -55,6 +55,22 @@ async function main() {
     allowPositionals: true
   });
 
+  if (positionals.length > 0)
+    values.prompt = positionals;
+
+  return values;
+}
+
+async function main() {
+  let options;
+  try {
+    options = parseArguments();
+  } catch (error) {
+    console.error(`Error parsing argument: ${error.message}`);
+    process.exitCode = 2;
+    return;
+  }
+
   if (options.help === true) {
     console.log(help);
     return;
@@ -64,16 +80,13 @@ async function main() {
     baseURL: options["base-url"]
   });
 
-  let prompt = {
-    system: [],
-    user: positionals
-  };
-
-  if (options.system !== undefined)
-    prompt.system.push(...options.system);
-
+  let prompt = { user: [], system: [] };
+  if (options.prompt !== undefined)
+    prompt.user.push(...options.prompt);
   if (!process.stdin.isTTY)
     prompt.user.push(await streamconsumers.text(process.stdin));
+  if (options.system !== undefined)
+    prompt.system.push(...options.system);
 
   let session = randomHexString(16);
   Transcript.start(session, prompt, [
