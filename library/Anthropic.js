@@ -1,4 +1,4 @@
-import * as Log from "./Log.js";
+import * as Transcript from "./Transcript.js";
 import * as Secret from "./Secret.js";
 import * as Tools from "./Tools.js";
 
@@ -58,7 +58,7 @@ export async function run(prompt, options) {
       input.messages.push({ role: "assistant", content: [ block ] });
       switch (block.type) {
         case "text":
-          Log.prose("⏵", block.text.trim());
+          Transcript.agent(block.text.trim());
           break;
 
         case "tool_use":

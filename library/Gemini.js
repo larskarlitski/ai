@@ -1,4 +1,4 @@
-import * as Log from "./Log.js";
+import * as Transcript from "./Transcript.js";
 import * as Secret from "./Secret.js";
 import * as Tools from "./Tools.js";
 
@@ -60,7 +60,7 @@ export async function run(prompt, options) {
     for (let part of parts) {
       input.contents.push({ role: "model", parts: [ part ] });
       if (part.text !== undefined) {
-        Log.prose("⏵", part.text);
+        Transcript.agent(part.text);
       } else if (part.functionCall !== undefined) {
         toolCalls += 1;
         input.contents.push({

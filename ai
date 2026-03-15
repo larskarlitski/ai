@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import * as Git from "./library/Git.js";
-import * as Log from "./library/Log.js";
+import * as Transcript from "./library/Transcript.js";
 import * as streamconsumers from "node:stream/consumers";
 import Agent from "./library/Agent.js";
 import fs from "node:fs/promises";
@@ -68,8 +68,6 @@ async function main() {
     return;
   }
 
-  await Log.setup(options.transcript);
-
   let agent = new Agent(options.model, {
     baseURL: options["base-url"]
   });
@@ -92,9 +90,10 @@ async function main() {
     prompt.user.push(await streamconsumers.text(process.stdin));
 
   let session = randomHexString(16);
-  Log.info("●", `Session ${session}: ${options.model}, ` +
-    (options.workspace ? "writable in temporary workspace" : "read-only")
-  );
+  Transcript.start(session, prompt, [
+    options.model,
+    options.workspace !== undefined ? "writable temporary workspace" : "read-only"
+  ]);
 
   let workspace;
   if (options.workspace) {
@@ -103,21 +102,24 @@ async function main() {
     await Git.setupWorkspace(repository, workspace);
   }
 
-  let infos = [];
+  let meta = [];
   try {
     let { tokens } = await agent.run(prompt, workspace);
-    infos.push(`${tokens} tokens`);
+    meta.push(`${tokens} tokens`);
+  } catch (error) {
+    Transcript.error(error);
+    process.exitCode = 1;
   } finally {
     if (workspace !== undefined) {
       let branch = await Git.teardownWorkspace(workspace, { pushChanges: true });
-      infos.push(branch !== undefined ? `agent's changes in ${branch}` : "agent made no changes");
+      meta.push(branch !== undefined ? `agent's changes in ${branch}` : "agent made no changes");
     }
-
-    if (infos.length > 0)
-      Log.info("■", "Done: " + infos.join(", "));
-
-    await Log.close();
   }
+
+  Transcript.done(meta);
+
+  if (options.transcript !== undefined)
+    await Transcript.save(options.transcript);
 }
 
 await main();

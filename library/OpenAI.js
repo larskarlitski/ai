@@ -1,4 +1,4 @@
-import * as Log from "./Log.js";
+import * as Transcript from "./Transcript.js";
 import * as Secret from "./Secret.js";
 import * as Tools from "./Tools.js";
 
@@ -55,7 +55,7 @@ export async function run(prompt, options) {
         case "message":
           for (let item of output.content ?? []) {
             if (item.type === "output_text")
-              Log.prose("⏵", item.text);
+              Transcript.agent(item.text);
             else
               throw new Error(`Unknown message type: ${item.type}`);
           }
@@ -64,7 +64,7 @@ export async function run(prompt, options) {
         case "reasoning":
           // it's usually empty
           for (let summary of output.summary)
-            Log.prose("⏵", summary);
+            Transcript.agent(summary);
           break;
 
         case "function_call":

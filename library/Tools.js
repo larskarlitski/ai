@@ -1,4 +1,4 @@
-import * as Log from "./Log.js";
+import * as Transcript from "./Transcript.js";
 import Edit from "./Edit.js";
 import Execute from "./Execute.js";
 
@@ -16,14 +16,11 @@ function create(name, args, workspace) {
 }
 
 export async function call(name, args, workspace) {
-  let tool = create(name, args, workspace);
-  Log.info(tool.symbol, tool.toString());
+  let t = create(name, args, workspace);
+  let logResult = Transcript.tool(t.symbol, t.toString());
 
-  let r = await tool.call();
-  if (r.output !== undefined)
-    Log.detail(r.output);
-  if (r.error !== undefined)
-    Log.detail(`Tool failed: ${r.error}`);
+  let r = await t.call();
+  logResult(r);
 
   return r;
 }
