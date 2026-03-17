@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import path from "node:path";
 import process from "node:process";
 import * as Text from "./Text.js";
 import * as TextTranscript from "./TextTranscript.js";
@@ -66,7 +67,13 @@ export function error(e) {
 export async function save(filename) {
   let f = await fs.open(filename, "w");
   try {
-    TextTranscript.write(f, transcript, { width: 80 });
+    switch (path.extname(filename)) {
+      case ".json":
+        f.write(JSON.stringify(transcript, null, 2));
+        break;
+      default:
+        TextTranscript.write(f, transcript, { width: 80 });
+    }
   } finally {
     await f.close();
   }
