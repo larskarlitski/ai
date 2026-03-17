@@ -1,61 +1,90 @@
-import * as Transcript from "./Transcript.js";
-import * as Secret from "./Secret.js";
-import * as Tools from "./Tools.js";
+const defaultBaseURL = "https://api.openai.com/";
 
-const baseURL = "https://api.openai.com/";
+export default class OpenAISession {
+  #input;
+  #previousResponseId;
+  #tools;
+  #getSecret;
+  #model;
+  #baseURL;
+  #tokens;
 
-async function call(previousResponseId, input, options) {
-  let url = new URL("v1/responses", options.baseURL ?? baseURL);
-  let response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${Secret.get("OPENAI_API_KEY")}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: options.model,
-      previous_response_id: previousResponseId,
-      tools: Tools.schemas.map(s => ({ type: "function", ...s })),
-      input
-    })
-  });
+  constructor(prompt, { tools, getSecret, model, baseURL }) {
+    this.#tools = tools;
+    this.#getSecret = getSecret;
+    this.#model = model;
+    this.#baseURL = baseURL;
+    this.#previousResponseId = null;
+    this.#tokens = 0;
 
-  if (!response.ok) {
-    let text = await response.text();
-    throw new Error(`OpenAI API error ${response.status}: ${text}`);
+    let input = [];
+    for (let [ role, content ] of Object.entries(prompt))
+      input.push(...content.map(c => ({ role, content: c })));
+
+    if (input.length === 0)
+      throw new TypeError("Invalid argument: prompt is empty");
+
+    this.#input = input;
   }
 
-  let reply = await response.json();
-  if (reply.error)
-    throw new Error(reply.error);
-  if (reply.status !== "completed")
-    throw new Error(`Model returned status ${reply.status}`);
+  get usage() {
+    return { tokens: this.#tokens };
+  }
 
-  return reply;
-}
+  async #fetch() {
+    let url = new URL("v1/responses", this.#baseURL ?? defaultBaseURL);
+    let response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${this.#getSecret("OPENAI_API_KEY")}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: this.#model,
+        previous_response_id: this.#previousResponseId,
+        tools: this.#tools.map(s => ({ type: "function", ...s })),
+        input: this.#input
+      })
+    });
 
-export async function run(prompt, options) {
-  let input = [];
-  for (let [ role, content ] of Object.entries(prompt))
-    input.push(...content.map(c => ({ role, content: c })));
+    if (!response.ok) {
+      let text = await response.text();
+      throw new Error(`OpenAI API error ${response.status}: ${text}`);
+    }
 
-  if (input.length === 0)
-    throw new TypeError("Invalid argument: prompt is empty");
+    let reply = await response.json();
+    if (reply.error)
+      throw new Error(reply.error);
+    if (reply.status !== "completed")
+      throw new Error(`Model returned status ${reply.status}`);
 
-  let messages = [];
-  let tokens = 0;
-  let previousResponseId = null;
+    return reply;
+  }
 
-  while (input.length !== 0) {
-    let reply = await call(previousResponseId, input, options);
+  async call(toolResults = []) {
+    for (let { id, result } of toolResults) {
+      this.#input.push({
+        type: "function_call_output",
+        call_id: id,
+        output: JSON.stringify(result) ?? ""
+      });
+    }
 
-    input = [];
+    let reply = await this.#fetch();
+    this.#tokens += reply.usage.total_tokens;
+
+    this.#previousResponseId = reply.id;
+    this.#input = [];
+
+    let texts = [];
+    let toolCalls = [];
+
     for (let output of reply.output) {
       switch (output.type) {
         case "message":
           for (let item of output.content ?? []) {
             if (item.type === "output_text")
-              Transcript.agent(item.text);
+              texts.push(item.text);
             else
               throw new Error(`Unknown message type: ${item.type}`);
           }
@@ -64,16 +93,14 @@ export async function run(prompt, options) {
         case "reasoning":
           // it's usually empty
           for (let summary of output.summary)
-            Transcript.agent(summary);
+            texts.push(summary);
           break;
 
         case "function_call":
-          input.push({
-            type: "function_call_output",
-            call_id: output.call_id,
-            output: JSON.stringify(
-              await Tools.call(output.name, JSON.parse(output.arguments), options.workspace)
-            ) ?? ""
+          toolCalls.push({
+            id: output.call_id,
+            name: output.name,
+            args: JSON.parse(output.arguments)
           });
           break;
 
@@ -82,9 +109,6 @@ export async function run(prompt, options) {
       }
     }
 
-    previousResponseId = reply.id;
-    tokens += reply.usage.total_tokens;
+    return { texts, toolCalls };
   }
-
-  return { tokens };
 }

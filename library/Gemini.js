@@ -1,51 +1,78 @@
-import * as Transcript from "./Transcript.js";
-import * as Secret from "./Secret.js";
-import * as Tools from "./Tools.js";
+const defaultBaseURL = "https://generativelanguage.googleapis.com/";
 
-const baseURL = "https://generativelanguage.googleapis.com/";
+export default class GeminiSession {
+  #input;
+  #tools;
+  #getSecret;
+  #model;
+  #baseURL;
+  #tokens;
 
-async function call(input, options) {
-  let url = new URL(`v1beta/models/${options.model}:generateContent`, options.baseURL ?? baseURL);
-  url.searchParams.set("key", Secret.get("GEMINI_API_KEY"));
+  constructor(prompt, { tools, getSecret, model, baseURL }) {
+    this.#tools = tools;
+    this.#getSecret = getSecret;
+    this.#model = model;
+    this.#baseURL = baseURL;
+    this.#tokens = 0;
 
-  let response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ...input,
-      generationConfig: { candidateCount: 1 },
-      tools: [ { functionDeclarations: Tools.schemas } ],
-      toolConfig: { functionCallingConfig: { mode: "AUTO" } }
-    })
-  });
+    let input = {};
+    if (prompt.system !== undefined && prompt.system.length > 0)
+      input.system_instruction = { parts: prompt.system.map(text => ({ text })) };
+    if (prompt.user !== undefined)
+      input.contents = [ { parts: prompt.user.map(text => ({ text })) } ];
 
-  if (!response.ok) {
-    let text = await response.text();
-    throw new Error(`Gemini API error ${response.status}: ${text}`);
+    if (Object.keys(input).length === 0)
+      throw new TypeError("Invalid argument: prompt is empty");
+
+    this.#input = input;
   }
 
-  let reply = await response.json();
-  if (reply.error)
-    throw new Error(reply.error);
+  get usage() {
+    return { tokens: this.#tokens };
+  }
 
-  return reply;
-}
+  async #fetch() {
+    let url = new URL(`v1beta/models/${this.#model}:generateContent`, this.#baseURL ?? defaultBaseURL);
+    url.searchParams.set("key", this.#getSecret("GEMINI_API_KEY"));
 
-export async function run(prompt, options) {
-  let input = {};
-  if (prompt.system !== undefined && prompt.system.length > 0)
-    input.system_instruction = { parts: prompt.system.map(text => ({ text })) };
-  if (prompt.user !== undefined)
-    input.contents = [ { parts: prompt.user.map(text => ({ text })) } ];
+    let response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...this.#input,
+        generationConfig: { candidateCount: 1 },
+        tools: [ { functionDeclarations: this.#tools } ],
+        toolConfig: { functionCallingConfig: { mode: "AUTO" } }
+      })
+    });
 
-  if (Object.keys(input).length === 0)
-    throw new TypeError("Invalid argument: prompt is empty");
+    if (!response.ok) {
+      let text = await response.text();
+      throw new Error(`Gemini API error ${response.status}: ${text}`);
+    }
 
-  let tokens = 0;
+    let reply = await response.json();
+    if (reply.error)
+      throw new Error(reply.error);
 
-  while (true) {
-    let reply = await call(input, options);
-    tokens += reply.usageMetadata?.totalTokenCount ?? 0;
+    return reply;
+  }
+
+  async call(toolResults = []) {
+    for (let { name, result } of toolResults) {
+      this.#input.contents.push({
+        role: "user",
+        parts: [{
+          functionResponse: {
+            name,
+            response: { result: JSON.stringify(result) }
+          }
+        }]
+      });
+    }
+
+    let reply = await this.#fetch();
+    this.#tokens += reply.usageMetadata?.totalTokenCount ?? 0;
 
     let candidate = reply.candidates?.[0];
     if (candidate === undefined)
@@ -55,35 +82,21 @@ export async function run(prompt, options) {
     if (parts === undefined || parts.length === 0)
       throw new Error("Model returned empty content");
 
-    let toolCalls = 0;
+    let texts = [];
+    let toolCalls = [];
 
     for (let part of parts) {
-      input.contents.push({ role: "model", parts: [ part ] });
+      this.#input.contents.push({ role: "model", parts: [ part ] });
+
       if (part.text !== undefined) {
-        Transcript.agent(part.text);
+        texts.push(part.text);
       } else if (part.functionCall !== undefined) {
-        toolCalls += 1;
-        input.contents.push({
-          role: "user",
-          parts: [{
-            functionResponse: {
-              name: part.functionCall.name,
-              response: {
-                result: JSON.stringify(
-                  await Tools.call(part.functionCall.name, part.functionCall.args, options.workspace)
-                )
-              }
-            }
-          }]
-        });
+        toolCalls.push({ name: part.functionCall.name, args: part.functionCall.args });
       } else {
         throw new Error("Unknown Gemini part type");
       }
     }
 
-    if (toolCalls === 0)
-      break;
+    return { texts, toolCalls };
   }
-
-  return { tokens };
 }
