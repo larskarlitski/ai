@@ -1,6 +1,6 @@
 FROM fedora-minimal:42
 
-RUN dnf install -y nodejs jq && dnf clean all
+RUN dnf install -y nodejs jq bubblewrap && dnf clean all
 
 COPY ./lib /usr/local/libexec/ai/lib
 COPY ./bin /usr/local/libexec/ai/bin
