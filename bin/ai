@@ -70,17 +70,17 @@ async function main(args) {
   let response = await session.start(agent.instructions, prompt, Object.values(agent.tools));
 
   for (;;) {
+    if (response.toolCalls.length === 0) {
+      transcript("end", { message: response.message ?? "" });
+      break;
+    }
+
     if (response.message !== undefined)
       transcript("model", { message: response.message });
-
-    if (response.toolCalls.length === 0)
-      break;
 
     let results = await runTools(agent.tools, response.toolCalls);
     response = await session.turn(results);
   }
-
-  transcript("end");
 }
 
 try {
