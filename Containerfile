@@ -6,3 +6,4 @@ COPY ./lib /usr/local/libexec/ai/lib
 COPY ./bin /usr/local/libexec/ai/bin
 
 RUN ln -s /usr/local/libexec/ai/bin/ai /usr/local/bin/ai
+RUN ln -s /usr/local/libexec/ai/bin/ai-transcript /usr/local/bin/ai-transcript

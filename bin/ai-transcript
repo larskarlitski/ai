@@ -1,0 +1,257 @@
+#!/usr/bin/env node
+
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import process from "node:process";
+import util from "node:util";
+import readline from "node:readline";
+
+import markdownit from "../lib/markdown-it.min.js";
+
+let help = `ai-transcript [OPTIONS] TRANSCRIPT
+
+Render a transcript as a self-contained HTML file.
+
+Options:
+
+  -h, --help  Show this help and exit.
+`;
+
+let style = `
+  :root {
+    --text: #111;
+    --muted-text: #777;
+    --border: #ddd;
+    --shaded-background: #f7f6f3;
+    --tool-background: #eef2f3;
+    --tool-border: #d5dcdf;
+    --tool-text: #34434a;
+    --tool-output-background: #f8fafb;
+    --tool-output-border: #e0e5e7;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  .muted {
+    color: var(--muted-text);
+  }
+
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    color: var(--text);
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+  }
+
+  header > *, article > *, #transcript > * {
+    max-width: 60rem;
+    margin-inline: auto;
+  }
+
+  header {
+    background-color: var(--shaded-background);
+    border-bottom: 1px solid var(--border);
+  }
+
+  #transcript {
+    order: 1;
+    background-color: var(--shaded-background);
+    border-top: 1px solid var(--border);
+    padding-bottom: 30vh;
+  }
+
+  :is(header, section) > h2 {
+    color: var(--muted-text);
+    font-weight: 700;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    margin-top: 1em;
+    margin-bottom: 0;
+
+    & + p {
+      margin-top: 0.5em;
+    }
+  }
+
+  #transcript > details.tool {
+    border: 1px solid var(--tool-border);
+    border-radius: 0.5em;
+    background: var(--tool-background);
+    margin-block: 1em;
+    overflow: clip;
+
+    & > summary {
+      display: flex;
+      gap: 0.5em;
+      align-items: baseline;
+      padding: 0.85em 1em;
+      color: var(--tool-text);
+      cursor: pointer;
+      list-style: none;
+
+      &::marker {
+        display: none;
+      }
+
+      &::before {
+        content: "›";
+        flex: none;
+        transition: transform .15s ease;
+      }
+
+      & > * {
+        flex-shrink: 0;
+      }
+
+      & > pre {
+        margin-block: 0;
+      }
+    }
+
+    &[open] > summary::before {
+      transform: rotate(90deg);
+    }
+
+    & > pre {
+      margin: 0;
+      padding: 1em;
+      border-top: 1px solid var(--tool-output-border);
+      background: var(--tool-output-background);
+      overflow-x: auto;
+    }
+  }
+`;
+
+let markdown = markdownit();
+
+let entities = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+
+let entityPattern = new RegExp(`[${Object.keys(entities).join("")}]`, "g");
+
+function escape(value) {
+  return String(value).replace(entityPattern, m => entities[m]);
+}
+
+class HTML {
+  #chunks = [];
+
+  static raw(value) {
+    let f = new HTML();
+    f.#chunks.push(String(value));
+    return f;
+  }
+
+  static tag(strings, ...values) {
+    let f = new HTML();
+
+    for (let i = 0; i < values.length; i++) {
+      f.#chunks.push(strings[i]);
+      f.#append(values[i]);
+    }
+
+    f.#chunks.push(strings.at(-1));
+    return f;
+  }
+
+  toString() {
+    return this.#chunks.join("");
+  }
+
+  #append(value) {
+    if (Array.isArray(value))
+      value.forEach(v => this.#append(v));
+    else if (value instanceof HTML)
+      this.#chunks.push(...value.#chunks);
+    else
+      this.#chunks.push(escape(value));
+  }
+}
+
+let html = HTML.tag;
+
+function renderEvent(event) {
+  switch (event.type) {
+    case "start":
+      return html`<!doctype html>
+        <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Transcript</title>
+          <style>${HTML.raw(style)}</style>
+        </heagd>
+        <body>
+          <header>
+            <h2>Prompt</h2>
+            ${event.payload.prompt.map(p => html`<p>${p}</p>`)}
+          </header>
+          <section id="transcript">
+            <h2>Transcript</h2>
+      `;
+
+    case "end":
+      return html`
+          </section>
+          <article>
+            ${HTML.raw(markdown.render(event.payload.message))}
+          </article>
+        </body>
+      </html>`;
+
+    case "model":
+      return HTML.raw(markdown.render(event.payload.message));
+
+    case "toolCall":
+      return html`
+        <details class="tool">
+          <summary>
+            <strong>${event.payload.tool}</strong>
+            ${Object.entries(event.payload.arguments).map(
+              ([ name, value ]) => html`<pre><span class="muted">${name}=</span>${value}</pre>`
+            )}
+          </summary>
+      `;
+
+    case "toolResult":
+      return html`
+          <pre>${event.payload.result}</pre>
+        </details>
+      `;
+
+    default:
+      console.log(`Unknown event: ${event.type}`);
+      return "";
+  }
+}
+
+async function main(args) {
+  if (args.length > 0)
+    throw new Error("Too many arguments");
+
+  let lines = readline.createInterface({ input: process.stdin });
+  for await (let line of lines) {
+    let event = JSON.parse(line);
+    process.stdout.write(String(renderEvent(event)));
+  }
+
+  return 0;
+}
+
+try {
+  await main(process.argv.slice(2));
+} catch (error) {
+  console.error(error);
+  process.exitCode = 1;
+}
